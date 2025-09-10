@@ -18,20 +18,27 @@ import { Outlet } from "react-router-dom";
 
 export default function Menu() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [openSubItem, setOpenSubItem] = useState(null);
+
+  // manejar expansión de nivel 1 y nivel 2 separados
+  const [openMenu, setOpenMenu] = useState(null);
+  const [openSubMenu, setOpenSubMenu] = useState(null);
+  const [selectedCodigo, setSelectedCodigo] = useState(null);
+
   const [selectedNames, setSelectedNames] = useState({
     menu: "",
     sub: "",
+    subsub: "",
   });
 
   const navigateTo = useNavigateTo();
 
   const toggleMenu = () => setMenuOpen(!menuOpen);
-  const toggleSubItem = (codigo) =>
-    setOpenSubItem((prev) => (prev === codigo ? null : codigo));
+  const toggleMenuItem = (codigo) =>
+    setOpenMenu((prev) => (prev === codigo ? null : codigo));
+  const toggleSubMenuItem = (codigo) =>
+    setOpenSubMenu((prev) => (prev === codigo ? null : codigo));
 
   const { data } = useData();
-
   const [posId, ...newData] = data;
 
   const parsedData = newData.map((item) => {
@@ -44,9 +51,14 @@ export default function Menu() {
   );
 
   const listaMenuSubItems = parsedData.filter(
-    (item) => !item.codigo.endsWith("0000"),
+    (item) => item.codigo.endsWith("00") && !item.codigo.endsWith("0000"),
   );
 
+  const listaMenuSubSubItems = parsedData.filter(
+    (item) => !item.codigo.endsWith("00"),
+  );
+
+  // mapear submenús
   const subItemsMap = listaMenuSubItems.reduce((acc, sub) => {
     const parentPrefix = sub.codigo.slice(0, 2);
     if (!acc[parentPrefix]) acc[parentPrefix] = [];
@@ -54,10 +66,25 @@ export default function Menu() {
     return acc;
   }, {});
 
-  const handleSubItem = (codigoSubMenu, nombreSubMenu, nombreMenu) => {
-    setSelectedNames({ menu: nombreMenu, sub: nombreSubMenu });
-    let child = `/menu/${codigoSubMenu}-repo`;
+  // mapear sub-submenús
+  const subSubItemsMap = listaMenuSubSubItems.reduce((acc, subsub) => {
+    const parentPrefix = subsub.codigo.slice(0, 4);
+    if (!acc[parentPrefix]) acc[parentPrefix] = [];
+    acc[parentPrefix].push(subsub);
+    return acc;
+  }, {});
+
+  // 🔹 actualizado para soportar tercer nivel
+  const handleSubItem = (codigo, nombre, menuNombre, subNombre = "") => {
+    setSelectedNames({
+      menu: menuNombre,
+      sub: subNombre || nombre,
+      subsub: subNombre ? nombre : "",
+    });
+    setSelectedCodigo(codigo);
+    let child = `/menu/${codigo}-repo`;
     navigateTo(child, { state: { value: posId } });
+    setMenuOpen(false); // cerrar drawer al seleccionar
   };
 
   const handleLogout = () => {
@@ -66,7 +93,8 @@ export default function Menu() {
 
   return (
     <div>
-      <nav className="w-full h-12  bg-green-800 text-white px-4 py-2 flex items-center">
+      {/* navbar */}
+      <nav className="w-full h-12 bg-green-800 text-white px-4 py-2 flex items-center">
         <button
           onClick={toggleMenu}
           className="h-full rounded hover:bg-green-700 transition flex items-center justify-center"
@@ -79,7 +107,18 @@ export default function Menu() {
         </button>
         <span className="mx-auto font-semibold">
           {selectedNames.menu}
-          {selectedNames.sub && ` / ${selectedNames.sub}`}
+          {selectedNames.sub && (
+            <>
+              <span className="font-bold text-yellow-400 mx-1">{">"}</span>
+              {selectedNames.sub}
+            </>
+          )}
+          {selectedNames.subsub && (
+            <>
+              <span className="font-bold text-yellow-400 mx-1">{">"}</span>
+              {selectedNames.subsub}
+            </>
+          )}
         </span>
         <button
           onClick={handleLogout}
@@ -103,11 +142,7 @@ export default function Menu() {
           },
         }}
       >
-        <Box
-          sx={{ width: 300 }}
-          role="presentation"
-          onKeyDown={() => setMenuOpen(false)}
-        >
+        <Box sx={{ width: 300, pb: 5 }} role="presentation">
           <List>
             {listaMenuItems.map((menu) => {
               const prefix = menu.codigo.slice(0, 2);
@@ -119,13 +154,13 @@ export default function Menu() {
                     <ListItemButton
                       onClick={() =>
                         subItems.length > 0
-                          ? toggleSubItem(menu.codigo)
+                          ? toggleMenuItem(menu.codigo)
                           : setMenuOpen(false)
                       }
                     >
                       <ListItemIcon>
                         {subItems.length > 0 ? (
-                          openSubItem === menu.codigo ? (
+                          openMenu === menu.codigo ? (
                             <ChevronDownIcon className="h-5 w-5 text-gray-300" />
                           ) : (
                             <ChevronRightIcon className="h-5 w-5 text-gray-300" />
@@ -138,36 +173,120 @@ export default function Menu() {
                     </ListItemButton>
                   </ListItem>
 
+                  {/* submenús */}
                   {subItems.length > 0 && (
                     <Collapse
-                      in={openSubItem === menu.codigo}
+                      in={openMenu === menu.codigo}
                       timeout="auto"
                       unmountOnExit
                     >
                       <List component="div" disablePadding>
-                        {subItems.map((sub) => (
-                          <ListItem
-                            key={sub.codigo}
-                            disablePadding
-                            sx={{ pl: 6 }}
-                          >
-                            <ListItemButton onClick={() => setMenuOpen(false)}>
-                              <ListItemIcon>
-                                <DocumentIcon className="h-5 w-5 text-green-400" />
-                              </ListItemIcon>
-                              <ListItemText
-                                primary={sub.nombre}
-                                onClick={() =>
-                                  handleSubItem(
-                                    sub.codigo,
-                                    sub.nombre,
-                                    menu.nombre,
-                                  )
-                                }
-                              />
-                            </ListItemButton>
-                          </ListItem>
-                        ))}
+                        {subItems.map((sub) => {
+                          const subPrefix = sub.codigo.slice(0, 4);
+                          const subSubItems = subSubItemsMap[subPrefix] || [];
+
+                          return (
+                            <Fragment key={sub.codigo}>
+                              <ListItem disablePadding sx={{ pl: 6 }}>
+                                <ListItemButton
+                                  onClick={() => {
+                                    if (subSubItems.length > 0) {
+                                      if (openSubMenu !== sub.codigo) {
+                                        toggleSubMenuItem(sub.codigo);
+                                        setSelectedNames({
+                                          menu: menu.nombre,
+                                          sub: sub.nombre,
+                                          subsub: "",
+                                        });
+                                      } else {
+                                        toggleSubMenuItem(sub.codigo);
+                                        setSelectedNames((prev) => ({
+                                          ...prev,
+                                          sub: "",
+                                          subsub: "",
+                                        }));
+                                      }
+                                    } else {
+                                      handleSubItem(
+                                        sub.codigo,
+                                        sub.nombre,
+                                        menu.nombre,
+                                      );
+                                    }
+                                  }}
+                                  sx={{
+                                    bgcolor:
+                                      selectedCodigo === sub.codigo
+                                        ? "rgba(34,197,94,0.2)"
+                                        : "transparent",
+                                    "&:hover": {
+                                      bgcolor: "rgba(34,197,94,0.3)",
+                                    },
+                                  }}
+                                >
+                                  <ListItemIcon>
+                                    {subSubItems.length > 0 ? (
+                                      openSubMenu === sub.codigo ? (
+                                        <ChevronDownIcon className="h-5 w-5 text-gray-300" />
+                                      ) : (
+                                        <ChevronRightIcon className="h-5 w-5 text-gray-300" />
+                                      )
+                                    ) : (
+                                      <DocumentIcon className="h-5 w-5 text-green-400" />
+                                    )}
+                                  </ListItemIcon>
+                                  <ListItemText primary={sub.nombre} />
+                                </ListItemButton>
+                              </ListItem>
+
+                              {/* sub-submenús */}
+                              {subSubItems.length > 0 && (
+                                <Collapse
+                                  in={openSubMenu === sub.codigo}
+                                  timeout="auto"
+                                  unmountOnExit
+                                >
+                                  <List component="div" disablePadding>
+                                    {subSubItems.map((subsub) => (
+                                      <ListItem
+                                        key={subsub.codigo}
+                                        disablePadding
+                                        sx={{ pl: 10 }}
+                                      >
+                                        <ListItemButton
+                                          onClick={() =>
+                                            handleSubItem(
+                                              subsub.codigo,
+                                              subsub.nombre,
+                                              menu.nombre,
+                                              sub.nombre,
+                                            )
+                                          }
+                                          sx={{
+                                            bgcolor:
+                                              selectedCodigo === subsub.codigo
+                                                ? "rgba(59,130,246,0.2)"
+                                                : "transparent",
+                                            "&:hover": {
+                                              bgcolor: "rgba(59,130,246,0.3)",
+                                            },
+                                          }}
+                                        >
+                                          <ListItemIcon>
+                                            <DocumentIcon className="h-5 w-5 text-blue-400" />
+                                          </ListItemIcon>
+                                          <ListItemText
+                                            primary={subsub.nombre}
+                                          />
+                                        </ListItemButton>
+                                      </ListItem>
+                                    ))}
+                                  </List>
+                                </Collapse>
+                              )}
+                            </Fragment>
+                          );
+                        })}
                       </List>
                     </Collapse>
                   )}

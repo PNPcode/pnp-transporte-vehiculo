@@ -34,11 +34,11 @@ const Login = () => {
       {/* Columna izquierda - Imagen */}
       <div
         className="relative hidden md:flex w-2/3 bg-cover bg-center"
-        style={{ backgroundImage: "url('/images/backgroundPNP.png')" }}
+        style={{ backgroundImage: "url('/images/backgroundVehiculo.png')" }}
       >
         <div className="absolute inset-0 flex items-center justify-center">
           <h1 className="text-4xl font-bold text-white drop-shadow-lg text-center">
-            DOTACION DE COMBUSTIBLE
+            TRANSPORTES PNP DEL PERU
           </h1>
         </div>
       </div>

@@ -48,11 +48,13 @@ public class HomeController : Controller
             string clave = Request.Form["data2"].ToString();
             string usuario = $"{user}|{clave}";
 
+            _logger.LogInformation("============== Usuario: {usuario}  ==========");
+
             daSQL odaSQL = new daSQL(_configuration, "CNX");
-            rpta = odaSQL.ejecutarComando("dbo.usp_loginXmenus", "@data", usuario);
+            rpta = odaSQL.ejecutarComando("dbo.usp_loginXmenusTransporte", "@data", usuario);
             if (rpta == "")
             {
-                _logger.LogError("dbo.usp_loginXmenus '{data}'", usuario);
+                _logger.LogError("dbo.usp_loginXmenusTransporte '{data}'", usuario);
                 rpta = "error";
             }
             return rpta;

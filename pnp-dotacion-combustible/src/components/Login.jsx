@@ -20,7 +20,7 @@ const Login = () => {
     setErrors(newErrors);
 
     if (!newErrors.usuario && !newErrors.password) {
-      const result = await login(newErrors.usuario, newErrors.password);
+      const result = await login(usuario, password);
       if (result.ok) {
         navigateTo("/menu");
       } else {

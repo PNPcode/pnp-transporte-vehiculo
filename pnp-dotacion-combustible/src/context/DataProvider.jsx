@@ -1,5 +1,7 @@
 /*eslint-disable*/
 import { createContext, useContext, useState } from "react";
+import { clearFetchCache } from "../hooks/useFetch";
+
 const DataContext = createContext();
 
 export const DataProvider = ({ children }) => {
@@ -47,8 +49,14 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const logout = () => {
+    setData([]); //limpiar data del contexto
+    setError(null); //limpiar errores
+    clearFetchCache(); //limpiar cache global del hook
+  };
+
   return (
-    <DataContext.Provider value={{ data, error, login }}>
+    <DataContext.Provider value={{ data, error, login, logout }}>
       {children}
     </DataContext.Provider>
   );

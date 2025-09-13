@@ -39,6 +39,8 @@ export default function Menu() {
     setOpenSubMenu((prev) => (prev === codigo ? null : codigo));
 
   const { data } = useData();
+  const { logout } = useData();
+
   const [posId, ...newData] = data;
 
   const parsedData = newData.map((item) => {
@@ -74,7 +76,7 @@ export default function Menu() {
     return acc;
   }, {});
 
-  // 🔹 actualizado para soportar tercer nivel
+  // actualizado para soportar tercer nivel
   const handleSubItem = (codigo, nombre, menuNombre, subNombre = "") => {
     setSelectedNames({
       menu: menuNombre,
@@ -88,6 +90,7 @@ export default function Menu() {
   };
 
   const handleLogout = () => {
+    logout();
     navigateTo("/");
   };
 
@@ -239,7 +242,7 @@ export default function Menu() {
                                 </ListItemButton>
                               </ListItem>
 
-                              {/* sub-submenús */}
+                              {/* sub-submenús(3er nivel) */}
                               {subSubItems.length > 0 && (
                                 <Collapse
                                   in={openSubMenu === sub.codigo}

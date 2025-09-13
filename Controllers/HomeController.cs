@@ -48,7 +48,7 @@ public class HomeController : Controller
             string clave = Request.Form["data2"].ToString();
             string usuario = $"{user}|{clave}";
 
-            _logger.LogInformation("============== Usuario: {usuario}  ==========");
+            _logger.LogInformation("============== Usuario: {usuario}  ==========", usuario);
 
             daSQL odaSQL = new daSQL(_configuration, "CNX");
             rpta = odaSQL.ejecutarComando("dbo.usp_loginXmenusTransporte", "@data", usuario);
@@ -65,5 +65,23 @@ public class HomeController : Controller
             return "error";
         }
     }
+
+    [HttpGet("/Home/TraerListaGrupoBien")]
+    public string TraerListaGrupoBien()
+    {
+        try
+        {
+            string rpta = "";
+            daSQL odaSQL = new daSQL(_configuration, "CNX");
+            rpta = odaSQL.ejecutarComando("dbo.usp_crud_grupo_bien", "@data", "146");
+            return rpta;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al guardar la data...");
+            return "error";
+        }
+    }
+
 
 }

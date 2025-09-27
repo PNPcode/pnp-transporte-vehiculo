@@ -20,7 +20,14 @@
 //   },
 // );
 
-const res = await fetch("http://localhost:5222/Home/TraerListaGeometrias", {
+// const res = await fetch("http://localhost:5222/Home/TraerListaGeometrias", {
+//   method: "GET",
+//   headers: {
+//     Accept: "text/plain",
+//   },
+// });
+
+const res = await fetch("http://localhost:5222/Home/TraerListaGrupoBien", {
   method: "GET",
   headers: {
     Accept: "text/plain",

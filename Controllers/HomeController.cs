@@ -22,22 +22,6 @@ public class HomeController : Controller
         return View();
     }
 
-    public string TraerListaDotacionCombustible()
-    {
-        try
-        {
-            string rpta = "";
-            daSQL odaSQL = new daSQL(_configuration, "CNX");
-            rpta = odaSQL.ejecutarComando("dbo.usp_listaDotacionCombustible");
-            return rpta;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al guardar la data...");
-            return "error";
-        }
-    }
-
     [HttpPost]
     public string TraerListaMenus()
     {

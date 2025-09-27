@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
-import tailwindcss from '@tailwindcss/vite'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 
@@ -9,7 +9,7 @@ const __dirname = dirname(__filename);
 
 export default defineConfig(({ command }) => {
   const isDev = command === "serve";
-  return{
+  return {
     root: resolve(__dirname, "src"),
     plugins: [react(), tailwindcss()],
     build: {

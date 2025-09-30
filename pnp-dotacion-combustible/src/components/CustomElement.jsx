@@ -60,9 +60,6 @@ const CustomElement = forwardRef(
           Tag = "customPopupInputText";
           break;
         case 151:
-          Tag = "customPopupInputSelect";
-          break;
-        case 152:
           Tag = "customPopupSelectMulti";
           break;
         default:
@@ -91,6 +88,8 @@ const CustomElement = forwardRef(
           if (parts.length > 2) {
             value = parts[0] + "." + parts.slice(1).join("");
           }
+        } else if (props.type === "text") {
+          value = value.toUpperCase();
         }
 
         if (props.type === "checkbox") {
@@ -142,6 +141,7 @@ const CustomElement = forwardRef(
               type={props.type}
               {...datasetProps}
               {...restProps}
+              defaultChecked={datasetProps["data-value"] === "1"}
               onChange={handleChange}
               className={`h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 ${restProps.disabled ? "opacity-50 cursor-not-allowed bg-gray-200" : ""}`}
             />
@@ -220,8 +220,37 @@ const CustomElement = forwardRef(
       );
     }
 
-    if (Tag === "customPopupSelectMulti" || Tag === "customPopupInputSelect") {
-      const { etiqueta, popupContent, ...restProps } = props;
+    if (Tag === "customPopupSelectMulti") {
+      const { etiqueta, onChange, popupContent, unaLinea, ...restProps } =
+        props;
+
+      const handleChange = (e) => {
+        const selectedValues = Array.from(e.target.selectedOptions).map(
+          (opt) => opt.value,
+        );
+        e.target.dataset.value = selectedValues.join(",");
+        if (onChange) onChange(e);
+      };
+
+      const parsedOptions = optionsProp.map((opt) => {
+        if (typeof opt === "string" && opt.includes("|")) {
+          const [value, label] = opt.split("|");
+          return { value, label };
+        } else if (typeof opt === "object" && opt.value && opt.label) {
+          return opt;
+        } else {
+          return { value: opt, label: opt };
+        }
+      });
+
+      const selectedValue = datasetProps["data-value"];
+      const matchedOption = parsedOptions.find(
+        (opt) => opt.value === selectedValue,
+      );
+
+      const selectStyle =
+        unaLinea === "1" ? { height: "2.5rem" } : { height: "10rem" };
+
       return (
         <div className="block w-full">
           <label
@@ -240,13 +269,18 @@ const CustomElement = forwardRef(
             disabled
             {...datasetProps}
             {...restProps}
+            onChange={handleChange}
+            style={selectStyle}
             className="block w-full rounded-md border  px-3 py-2 shadow-sm opacity-50 cursor-not-allowed bg-gray-200 text-gray-500"
           >
-            {optionsProp.map(({ value, label }, idx) => (
-              <option key={idx} value={value}>
-                {label}
+            {matchedOption ? (
+              <option
+                value={matchedOption.value}
+                style={{ fontWeight: "bold" }}
+              >
+                {matchedOption.label}
               </option>
-            ))}
+            ) : null}
           </select>
 
           {showPopup && (
@@ -272,7 +306,8 @@ const CustomElement = forwardRef(
     if (Tag === "select") {
       const { etiqueta, onChange, children, ...restProps } = props;
       const handleChange = (e) => {
-        e.target.dataset.value = e.target.value;
+        const value = e.target.value;
+        e.target.dataset.value = value;
         if (onChange) onChange(e);
       };
 
@@ -290,15 +325,22 @@ const CustomElement = forwardRef(
             ref={ref}
             {...datasetProps}
             {...restProps}
+            defaultValue={datasetProps["data-value"] ?? ""}
             onChange={handleChange}
             className={`block w-full rounded-md border bg-gray-50 px-3 py-2 shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 border-gray-300 ${restProps.disabled ? "opacity-50 cursor-not-allowed bg-gray-200 text-gray-500" : ""}`}
           >
+            <option value="" disabled>
+              Seleccione --
+            </option>
             {children ??
-              optionsProp.map(({ value, label }, idx) => (
-                <option key={idx} value={value}>
-                  {label}
-                </option>
-              ))}
+              optionsProp.map((datos, idx) => {
+                const [value, label] = datos.split("|");
+                return (
+                  <option key={idx} value={value}>
+                    {label}
+                  </option>
+                );
+              })}
           </select>
         </label>
       );
@@ -307,7 +349,6 @@ const CustomElement = forwardRef(
     if (Tag === "selectMulti") {
       const { etiqueta, onChange, children, ...restProps } = props;
       const handleChange = (e) => {
-        // Guardamos los valores seleccionados como dataset
         const selectedValues = Array.from(e.target.selectedOptions).map(
           (opt) => opt.value,
         );
@@ -374,7 +415,7 @@ const CustomElement = forwardRef(
     }
 
     if (Tag === "button") {
-      const { etiqueta, children, ...restProps } = props;
+      const { etiqueta, children, onClick, ...restProps } = props;
       return (
         <div className="block w-full">
           {etiqueta && (
@@ -386,6 +427,7 @@ const CustomElement = forwardRef(
             ref={ref}
             {...datasetProps}
             {...restProps}
+            onClick={onClick}
             className={`px-4 py-2 rounded-md bg-indigo-500 text-white shadow-sm hover:bg-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-400 ${restProps.disabled ? "opacity-50 cursor-not-allowed bg-gray-300 hover:bg-gray-300" : ""}`}
           >
             {children}

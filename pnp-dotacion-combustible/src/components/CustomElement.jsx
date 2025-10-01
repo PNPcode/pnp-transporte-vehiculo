@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { forwardRef } from "react";
 import { memoriaGlobal } from "./memoriaGlobal";
+import { BaseTabla } from "./BaseTabla";
 
 const CustomElement = forwardRef(
   ({ typeCode, dataAttrs = {}, options: optionsProp = [], ...props }, ref) => {
@@ -249,7 +250,17 @@ const CustomElement = forwardRef(
       );
 
       const selectStyle =
-        unaLinea === "1" ? { height: "2.5rem" } : { height: "10rem" };
+        unaLinea === "1" ? { height: "2.7rem" } : { height: "10rem" };
+
+      const configTable = {
+        title: etiqueta,
+        isPaginar: false,
+        listaDatos: optionsProp,
+        offsetColumnas: restProps.offsetColumnas ?? 1,
+      };
+
+      const popupWidth = restProps.ancho ? `${restProps.ancho}px` : "600px";
+      // console.log("CustomElement: ", optionsProp);
 
       return (
         <div className="block w-full">
@@ -284,18 +295,30 @@ const CustomElement = forwardRef(
           </select>
 
           {showPopup && (
-            <div className="fixed inset-0 flex items-center justify-center bg-white/0 backdrop-blur-sm z-50">
-              <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-                <h2 className="text-lg font-bold mb-4">Popup de selección</h2>
-                <div className="mb-4">
-                  {popupContent ?? <p>Aquí puedes mostrar más información.</p>}
+            <div
+              className="fixed inset-0 flex items-center justify-center bg-white/0 backdrop-blur-sm z-50"
+              tabIndex={-1}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setShowPopup(false);
+                }
+              }}
+            >
+              <div
+                className="bg-white p-6 rounded-lg shadow-lg max-h-[80vh] flex flex-col overflow-y-auto"
+                style={{ width: popupWidth }}
+              >
+                <div className="mb-4 flex-1 min-h-0 overflow-y-auto pr-2">
+                  {popupContent ?? <BaseTabla configTable={configTable} />}
                 </div>
-                <button
-                  onClick={() => setShowPopup(false)}
-                  className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600"
-                >
-                  Cerrar
-                </button>
+                <div className="pt-3 border-t border-gray-200 flex justify-end">
+                  <button
+                    onClick={() => setShowPopup(false)}
+                    className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600"
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
             </div>
           )}

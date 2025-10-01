@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import useFetch from "../hooks/useFetch";
+import useValidationFields from "../hooks/useValidationFields";
 import CustomElement from "../components/CustomElement";
 
 const RegistroGrupoBien01 = () => {
@@ -9,7 +10,10 @@ const RegistroGrupoBien01 = () => {
 
   const { data, loading, error } = useFetch("/Home/TraerListaGrupoBien");
   const [datasets, setDatasets] = useState({});
+
   const elementosRef = useRef([]);
+  const { handleClick, mensajeError, esValido } =
+    useValidationFields(elementosRef);
 
   if (loading) {
     return <div>Cargando datos...</div>;
@@ -29,40 +33,6 @@ const RegistroGrupoBien01 = () => {
     }));
   };
 
-  const handleClick = () => {
-    let hayErrores = false;
-    elementosRef.current.forEach((wrapper) => {
-      if (!wrapper) return;
-      const input = wrapper.querySelector("input, select, textarea") || wrapper;
-      if (!input) return;
-      const isRequired = input?.dataset.required === "true" || input?.required;
-      if (!isRequired) return;
-      let value = input?.dataset.value ?? "";
-      if (input.type === "checkbox" || input.type === "radio") {
-        value = input.checked ? "1" : "";
-      }
-      if (input.multiple && typeof value === "string") {
-        value = value
-          .split(",")
-          .map((v) => v.trim())
-          .filter((v) => v)
-          .join(",");
-      }
-      const tieneError = !value || value.toString().trim() === "";
-      if (tieneError) {
-        hayErrores = true;
-        wrapper.classList.add("border-2", "border-red-500", "rounded-md");
-      } else {
-        wrapper.classList.remove("border-2", "border-red-500", "rounded-md");
-      }
-    });
-    if (hayErrores) {
-      alert("Hay campos requeridos sin completar.");
-    } else {
-      alert("Todos los campos requeridos completos!");
-    }
-  };
-
   const preData = data?.[0]?.split("~") ?? [];
   const info = preData?.[0]?.split("|") ?? [];
   const infoMeta = preData?.[1]?.split("|") ?? [];
@@ -79,7 +49,12 @@ const RegistroGrupoBien01 = () => {
     return acc;
   }, {});
 
-  // console.log("listasData151", metadata[9]);
+  if (esValido) {
+    console.log("Todos los campos requeridos completos!");
+  }
+
+  console.log("mapaListas keys:", Object.keys(mapaListas));
+  console.log("Listas documentos:", mapaListas[8]);
 
   return (
     <>
@@ -136,6 +111,11 @@ const RegistroGrupoBien01 = () => {
         <CustomElement typeCode={120} onClick={handleClick}>
           GUARDAR
         </CustomElement>
+        {mensajeError && (
+          <div className="mt-3 p-3 text-sm text-white bg-red-400 rounded-md shadow-md animate-bounce">
+            {mensajeError}
+          </div>
+        )}
       </div>
     </>
   );

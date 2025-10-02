@@ -18,9 +18,10 @@ export const useTablaVirtualizada = (rows, rowsOriginal, offsetColumnas) => {
   // Cabecera
   const cabecera = useMemo(() => {
     if (rowsOriginal && rowsOriginal.length > 1) {
-      return rowsOriginal[1]
-        .split("|")
-        .map((val, i) => [titulo[i], Number(val)]);
+      return rowsOriginal[1].split("|").map((val, i) => {
+        const ancho = Number(val);
+        return [titulo[i], ancho];
+      });
     }
     return [];
   }, [rowsOriginal, titulo]);
@@ -44,6 +45,8 @@ export const useTablaVirtualizada = (rows, rowsOriginal, offsetColumnas) => {
     count: virtualCount,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => 35,
+    measureElement: null,
+    overscan: 10,
   });
 
   // Scroll sincronizado

@@ -1,36 +1,88 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
 import Loader from "./Loader";
 import { useTablaVirtualizada } from "../hooks/useTablaVirtualizada";
 import Pagination from "@mui/material/Pagination";
 import Stack from "@mui/material/Stack";
 
-export const BaseTabla = ({ configTable }) => {
+const Fila = memo(
+  ({
+    virtualRow,
+    filaFiltrada,
+    isEven,
+    isSelected,
+    effectiveWidth,
+    cabeceraFiltrada,
+    onClick,
+    onDoubleClick,
+  }) => (
+    <div
+      data-row-index={virtualRow.index}
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      className={`absolute left-0 flex border-b border-gray-200 cursor-pointer transition-colors duration-150 ${
+        isSelected ? "bg-indigo-200" : isEven ? "bg-white" : "bg-gray-50"
+      } hover:bg-indigo-100 active:bg-indigo-300`}
+      style={{
+        transform: `translateY(${virtualRow.start}px)`,
+        width: `${effectiveWidth}px`,
+      }}
+    >
+      {filaFiltrada.map((val, j) => (
+        <div
+          key={j}
+          className="px-2 py-2 text-left"
+          style={{
+            minWidth: `${cabeceraFiltrada[j][1]}px`,
+            flexShrink: 0,
+          }}
+        >
+          {val}
+        </div>
+      ))}
+    </div>
+  ),
+);
+
+export const BaseTabla = ({ configTable, onSelect }) => {
   const { title, isPaginar, listaDatos, offsetColumnas } = configTable;
 
   const rowsOriginal = listaDatos;
 
-  const dataRows =
-    listaDatos && listaDatos.length > 2 ? listaDatos.slice(2) : [];
+  const dataRows = useMemo(() => {
+    return listaDatos && listaDatos.length > 2 ? listaDatos.slice(2) : [];
+  }, [listaDatos]);
 
   // .... inicio de paginacion ....
   const [page, setPage] = useState(1);
   const rowsPerPage = 20;
   const [containerWidth, setContainerWidth] = useState(null);
+  const [searchText, setSearchText] = useState("");
+  const searchInputRef = useRef(null);
+
+  const filteredRows = useMemo(() => {
+    if (!searchText.trim()) return dataRows;
+    const lower = searchText.toLowerCase();
+    return dataRows.filter((fila) => fila.toLowerCase().includes(lower));
+  }, [dataRows, searchText]);
+
+  const totalRegistrosFiltrados = useMemo(
+    () => filteredRows.length,
+    [filteredRows],
+  );
 
   useEffect(() => {
     setPage(1);
   }, []);
 
-  const totalPages = Math.max(1, Math.ceil(dataRows.length / rowsPerPage));
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
   useEffect(() => {
     if (isPaginar && page > totalPages) {
       setPage(totalPages);
     }
   }, [isPaginar, page, totalPages]);
-
   const start = (page - 1) * rowsPerPage;
   const end = start + rowsPerPage;
-  const paginatedRows = dataRows.slice(start, end);
+  const paginatedRows = filteredRows.slice(start, end);
 
   const handlePageChange = (event, newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -39,7 +91,17 @@ export const BaseTabla = ({ configTable }) => {
   };
   // ........ fin paginacion ....
 
-  const datosTabla = isPaginar ? paginatedRows : listaDatos;
+  const datosTabla = useMemo(() => {
+    const base = isPaginar ? paginatedRows : filteredRows;
+    return base.map((fila) => {
+      const partes = fila.split("|");
+      return {
+        completa: partes,
+        visible: partes.slice(offsetColumnas),
+      };
+    });
+  }, [isPaginar, paginatedRows, filteredRows, offsetColumnas]);
+
   const {
     totalRegistros,
     cabeceraFiltrada,
@@ -63,8 +125,17 @@ export const BaseTabla = ({ configTable }) => {
 
   // NOTA: PARA RESALTADO DE LA FILA SELECCIONADA
   const [selectedIndex, setSelectedIndex] = useState(null);
+
   const handleKeyDown = useCallback(
     (e) => {
+      if (
+        e.key === "Enter" &&
+        document.activeElement === searchInputRef.current
+      ) {
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
       if (rowVirtualizer.getTotalSize() === 0) return;
       if (e.key === "ArrowDown") {
         setSelectedIndex((prev) => {
@@ -72,20 +143,32 @@ export const BaseTabla = ({ configTable }) => {
             prev === null
               ? 0
               : Math.min(prev + 1, rowVirtualizer.getTotalSize() - 1);
-          rowVirtualizer.scrollToIndex(next, { align: "center" });
+          rowVirtualizer.scrollToIndex(next, {
+            align: "center",
+            behavior: "smooth",
+          });
           return next;
         });
         e.preventDefault();
       } else if (e.key === "ArrowUp") {
         setSelectedIndex((prev) => {
           const next = prev === null ? 0 : Math.max(prev - 1, 0);
-          rowVirtualizer.scrollToIndex(next, { align: "center" });
+          rowVirtualizer.scrollToIndex(next, {
+            align: "center",
+            behavior: "smooth",
+          });
           return next;
         });
         e.preventDefault();
+      } else if (e.key === "Enter" && selectedIndex != null) {
+        const filaSeleccionada = datosTabla[selectedIndex];
+        if (filaSeleccionada && onSelect) {
+          onSelect(filaSeleccionada.completa); // propaga el registro al padre
+        }
+        e.preventDefault();
       }
     },
-    [rowVirtualizer],
+    [rowVirtualizer, selectedIndex, datosTabla, onSelect],
   );
 
   useEffect(() => {
@@ -97,32 +180,21 @@ export const BaseTabla = ({ configTable }) => {
 
   useEffect(() => {
     if (selectedIndex != null) {
-      rowVirtualizer.scrollToIndex(selectedIndex, { align: "center" });
-      const align =
-        selectedIndex === 0
-          ? "start"
-          : selectedIndex === rowVirtualizer.options.count - 1
-            ? "end"
-            : "center";
-      rowVirtualizer.scrollToIndex(selectedIndex, { align });
-      const rowEl = tableContainerRef.current?.querySelector(
-        `[data-row-index="${selectedIndex}"]`,
-      );
-      if (rowEl) {
-        rowEl.scrollIntoView({
-          block: "nearest",
-          inline: "nearest",
-        });
-      }
+      rowVirtualizer.scrollToIndex(selectedIndex, {
+        align: "center",
+        behavior: "smooth",
+      });
     }
-  }, [selectedIndex, rowVirtualizer, tableContainerRef]);
+  }, [selectedIndex, rowVirtualizer]);
 
   if (!listaDatos || listaDatos.length <= 1) {
     return <Loader />;
   }
 
   const effectiveWidth =
-    containerWidth != null ? containerWidth - 32 : totalWidth;
+    containerWidth != null
+      ? Math.max(containerWidth - 32, totalWidth)
+      : totalWidth;
 
   return (
     <>
@@ -137,11 +209,29 @@ export const BaseTabla = ({ configTable }) => {
           <h2 className="text-left text-xl font-bold text-gray-800 py-2 px-4">
             {title}{" "}
             <span className="ml-2 text-sm font-medium text-gray-500">
-              {isPaginar
-                ? `(${listaDatos.length - 2} Reg.)`
-                : `(${totalRegistros} Reg.)`}
+              {`(${totalRegistrosFiltrados} Reg.)`}
             </span>
           </h2>
+          <div className="px-4 pb-2">
+            <input
+              type="text"
+              placeholder="Buscar..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  tableContainerRef.current?.focus();
+                  setSelectedIndex(0); // opcional: empezar desde el primer resultado
+                }
+              }}
+              ref={searchInputRef}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm
+                          focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                          text-sm text-gray-700"
+            />
+          </div>
         </div>
 
         {/* Cabecera fija */}
@@ -154,9 +244,7 @@ export const BaseTabla = ({ configTable }) => {
               key={id}
               className="px-2 py-2 font-semibold text-left"
               style={{
-                width: `${col[1]}px`,
                 minWidth: `${col[1]}px`,
-                maxWidth: `${col[1]}px`,
                 flexShrink: 0,
               }}
             >
@@ -176,46 +264,31 @@ export const BaseTabla = ({ configTable }) => {
           }}
         >
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const base = isPaginar ? 0 : 2;
-            const fila = datosTabla[virtualRow.index + base];
-            if (!fila) return null;
-            const oneRow = fila.split("|");
-            const filaFiltrada = oneRow.slice(offsetColumnas);
-            const isEven = virtualRow.index % 2 === 0;
-
-            const isSelected = virtualRow.index === selectedIndex;
-
+            const filaItem = datosTabla[virtualRow.index];
+            if (!filaItem) return null;
             return (
-              <div
+              <Fila
                 key={virtualRow.index}
-                data-row-index={virtualRow.index}
+                virtualRow={virtualRow}
+                filaFiltrada={filaItem.visible}
+                isEven={virtualRow.index % 2 === 0}
+                isSelected={virtualRow.index === selectedIndex}
+                effectiveWidth={effectiveWidth}
+                cabeceraFiltrada={cabeceraFiltrada}
                 onClick={() => {
                   setSelectedIndex(virtualRow.index);
                   rowVirtualizer.scrollToIndex(virtualRow.index, {
                     align: "center",
+                    behavior: "smooth",
                   });
                 }}
-                className={`absolute left-0 flex border-b border-gray-200 cursor-pointe transition-colors duration-150 ${isSelected ? "bg-indigo-200" : isEven ? "bg-white" : "bg-gray-50"} hover:bg-indigo-100 active:bg-indigo-300`}
-                style={{
-                  transform: `translateY(${virtualRow.start}px)`,
-                  width: `${effectiveWidth}px`,
+                onDoubleClick={() => {
+                  setSelectedIndex(virtualRow.index);
+                  if (filaItem && onSelect) {
+                    onSelect(filaItem.completa);
+                  }
                 }}
-              >
-                {filaFiltrada.map((val, j) => (
-                  <div
-                    key={j}
-                    className="px-2 py-2 text-left truncate"
-                    style={{
-                      width: `${cabeceraFiltrada[j][1]}px`,
-                      minWidth: `${cabeceraFiltrada[j][1]}px`,
-                      maxWidth: `${cabeceraFiltrada[j][1]}px`,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {val}
-                  </div>
-                ))}
-              </div>
+              />
             );
           })}
         </div>

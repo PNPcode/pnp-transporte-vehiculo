@@ -6,6 +6,7 @@ import { BaseTabla } from "./BaseTabla";
 const CustomElement = forwardRef(
   ({ typeCode, dataAttrs = {}, options: optionsProp = [], ...props }, ref) => {
     const [showPopup, setShowPopup] = useState(false);
+    const [overrideOption, setOverrideOption] = useState(null);
 
     const datasetProps = Object.entries(dataAttrs).reduce(
       (acc, [key, value]) => {
@@ -15,12 +16,16 @@ const CustomElement = forwardRef(
       {},
     );
 
+    if (typeCode === 100) {
+      const { value, campo } = dataAttrs;
+      memoriaGlobal.container.value = value;
+      memoriaGlobal.container.campo = campo;
+      return null;
+    }
+
     let Tag = "div";
     if (typeCode) {
       switch (typeCode) {
-        case 100:
-          Tag = "memoriaGlobal";
-          break;
         case 101:
           Tag = "input";
           props.type = "text";
@@ -66,13 +71,6 @@ const CustomElement = forwardRef(
         default:
           Tag = "div";
       }
-    }
-
-    if (Tag === "memoriaGlobal") {
-      const { value, campo } = props;
-      memoriaGlobal.container.value = value;
-      memoriaGlobal.container.campo = campo;
-      return null;
     }
 
     if (Tag === "input") {
@@ -222,8 +220,15 @@ const CustomElement = forwardRef(
     }
 
     if (Tag === "customPopupSelectMulti") {
-      const { etiqueta, onChange, popupContent, unaLinea, ...restProps } =
-        props;
+      const {
+        etiqueta,
+        onChange,
+        popupContent,
+        unaLinea,
+        offsetColumnas,
+        ancho,
+        ...restProps
+      } = props;
 
       const handleChange = (e) => {
         const selectedValues = Array.from(e.target.selectedOptions).map(
@@ -248,19 +253,16 @@ const CustomElement = forwardRef(
       const matchedOption = parsedOptions.find(
         (opt) => opt.value === selectedValue,
       );
-
+      const displayOption = overrideOption ?? matchedOption;
       const selectStyle =
         unaLinea === "1" ? { height: "2.7rem" } : { height: "10rem" };
-
       const configTable = {
         title: etiqueta,
         isPaginar: false,
         listaDatos: optionsProp,
-        offsetColumnas: restProps.offsetColumnas ?? 1,
+        offsetColumnas: offsetColumnas ?? 1,
       };
-
-      const popupWidth = restProps.ancho ? `${restProps.ancho}px` : "600px";
-      // console.log("CustomElement: ", optionsProp);
+      const popupWidth = ancho ? `${ancho}px` : "600px";
 
       return (
         <div className="block w-full">
@@ -280,16 +282,17 @@ const CustomElement = forwardRef(
             disabled
             {...datasetProps}
             {...restProps}
+            data-value={displayOption?.value ?? datasetProps["data-value"]}
             onChange={handleChange}
             style={selectStyle}
             className="block w-full rounded-md border  px-3 py-2 shadow-sm opacity-50 cursor-not-allowed bg-gray-200 text-gray-500"
           >
-            {matchedOption ? (
+            {displayOption ? (
               <option
-                value={matchedOption.value}
+                value={displayOption.value}
                 style={{ fontWeight: "bold" }}
               >
-                {matchedOption.label}
+                {displayOption.label}
               </option>
             ) : null}
           </select>
@@ -309,7 +312,32 @@ const CustomElement = forwardRef(
                 style={{ width: popupWidth }}
               >
                 <div className="mb-4 flex-1 min-h-0 overflow-y-auto pr-2">
-                  {popupContent ?? <BaseTabla configTable={configTable} />}
+                  {popupContent ?? (
+                    <BaseTabla
+                      configTable={configTable}
+                      onSelect={(fila) => {
+                        const value = fila[0];
+                        const label = fila[fila.length - 1];
+                        setOverrideOption({ value, label });
+                        if (ref && ref.current) {
+                          try {
+                            ref.current.dataset.value = value;
+                          } catch (err) {
+                            console.log(err);
+                          }
+                        }
+                        const fakeEvent = {
+                          target: {
+                            value,
+                            dataset: { value },
+                            option: { value, label },
+                          },
+                        };
+                        if (onChange) onChange(fakeEvent);
+                        setShowPopup(false);
+                      }}
+                    />
+                  )}
                 </div>
                 <div className="pt-3 border-t border-gray-200 flex justify-end">
                   <button

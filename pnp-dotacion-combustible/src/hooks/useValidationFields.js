@@ -3,34 +3,56 @@ import { useState } from "react";
 const useValidationFields = (elementosRef) => {
   const [mensajeError, setMensajeError] = useState("");
   const [esValido, setEsValido] = useState(false);
+  const [valoresCambiados, setValoresCambiados] = useState({
+    data: [],
+    campos: [],
+  });
 
   const handleClick = () => {
     let hayErrores = false;
+    const nuevosData = [];
+    const nuevosCampos = [];
+
     elementosRef.current.forEach((wrapper) => {
       if (!wrapper) return;
       const input = wrapper.querySelector("input, select, textarea") || wrapper;
       if (!input) return;
+
+      const dsValue = input.dataset?.value ?? "";
+      const dsValor = input.dataset?.valor ?? "";
+      const dsCampo = input.dataset?.campo ?? "";
+
+      if (dsValue !== dsValor && !dsCampo.startsWith("0")) {
+        nuevosData.push(dsValue);
+        nuevosCampos.push(dsCampo);
+      }
+
       const isRequired = input?.dataset.required === "true" || input?.required;
-      if (!isRequired) return;
-      let value = input?.dataset.value ?? "";
-      if (input.type === "checkbox" || input.type === "radio") {
-        value = input.checked ? "1" : "";
-      }
-      if (input.multiple && typeof value === "string") {
-        value = value
-          .split(",")
-          .map((v) => v.trim())
-          .filter((v) => v)
-          .join(",");
-      }
-      const tieneError = !value || value.toString().trim() === "";
-      if (tieneError) {
-        hayErrores = true;
-        wrapper.classList.add("border-2", "border-red-500", "rounded-md");
-      } else {
-        wrapper.classList.remove("border-2", "border-red-500", "rounded-md");
+      if (isRequired) {
+        let value = dsValue;
+        if (input.type === "checkbox" || input.type === "radio") {
+          value = input.checked ? "1" : "";
+        }
+        if (input.multiple && typeof value === "string") {
+          value = value
+            .split(",")
+            .map((v) => v.trim())
+            .filter((v) => v)
+            .join(",");
+        }
+        const tieneError = !value || value.toString().trim() === "";
+        if (tieneError) {
+          hayErrores = true;
+          wrapper.classList.add("border-2", "border-red-500", "rounded-md");
+        } else {
+          wrapper.classList.remove("border-2", "border-red-500", "rounded-md");
+        }
       }
     });
+
+    const resultado = { data: nuevosData, campos: nuevosCampos };
+    setValoresCambiados(resultado);
+
     if (hayErrores) {
       setEsValido(false);
       setMensajeError("Existen campos obligatorios");
@@ -41,8 +63,10 @@ const useValidationFields = (elementosRef) => {
       setEsValido(true);
       setMensajeError("");
     }
+
+    return resultado;
   };
-  return { handleClick, mensajeError, esValido };
+  return { handleClick, mensajeError, esValido, valoresCambiados };
 };
 
 export default useValidationFields;

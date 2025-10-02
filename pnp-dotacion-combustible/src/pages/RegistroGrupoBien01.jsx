@@ -1,19 +1,31 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import useFetch from "../hooks/useFetch";
 import useValidationFields from "../hooks/useValidationFields";
 import CustomElement from "../components/CustomElement";
+import { memoriaGlobal } from "../components/memoriaGlobal";
 
 const RegistroGrupoBien01 = () => {
   const location = useLocation();
   const usuario = location.state?.value;
-
-  const { data, loading, error } = useFetch("/Home/TraerListaGrupoBien");
   const [datasets, setDatasets] = useState({});
-
   const elementosRef = useRef([]);
-  const { handleClick, mensajeError, esValido } =
+  const { data, loading, error } = useFetch("/Home/TraerListaGrupoBien");
+
+  const { handleClick, mensajeError, esValido, valoresCambiados } =
     useValidationFields(elementosRef);
+
+  const handleEnvio = useCallback(() => {
+    console.log("Todos los campos requeridos completos en SOLITARIO!");
+    console.log("valoresCambiados:", valoresCambiados);
+    console.log("Contenido memoriaGlobal 3:", memoriaGlobal.container);
+  }, [valoresCambiados]);
+
+  useEffect(() => {
+    if (esValido) {
+      handleEnvio();
+    }
+  }, [esValido, handleEnvio]);
 
   if (loading) {
     return <div>Cargando datos...</div>;
@@ -49,12 +61,8 @@ const RegistroGrupoBien01 = () => {
     return acc;
   }, {});
 
-  if (esValido) {
-    console.log("Todos los campos requeridos completos!");
-  }
-
-  console.log("mapaListas keys:", Object.keys(mapaListas));
-  console.log("Listas documentos:", mapaListas[8]);
+  // console.log("mapaListas keys:", Object.keys(mapaListas));
+  // console.log("Listas documentos:", mapaListas[9]);
 
   return (
     <>
@@ -91,7 +99,12 @@ const RegistroGrupoBien01 = () => {
                         : "",
                   }
                 : typeCode === 151
-                  ? { defaultValue: [], unaLinea: metadata[9] }
+                  ? {
+                      defaultValue: [],
+                      unaLinea: metadata?.[9],
+                      offsetColumnas: metadata?.[10],
+                      ancho: metadata?.[11],
+                    }
                   : { defaultValue: datos.data })}
               dataAttrs={{
                 value: data,
@@ -108,7 +121,7 @@ const RegistroGrupoBien01 = () => {
         })}
       </div>
       <div className="mt-8 mb-2">
-        <CustomElement typeCode={120} onClick={handleClick}>
+        <CustomElement typeCode={120} onClick={() => handleClick()}>
           GUARDAR
         </CustomElement>
         {mensajeError && (

@@ -50,9 +50,7 @@ const useValidationFields = (elementosRef) => {
       }
     });
 
-    const resultado = { data: nuevosData, campos: nuevosCampos };
-    setValoresCambiados(resultado);
-
+    setValoresCambiados({ data: nuevosData, campos: nuevosCampos });
     if (hayErrores) {
       setEsValido(false);
       setMensajeError("Existen campos obligatorios");
@@ -63,8 +61,6 @@ const useValidationFields = (elementosRef) => {
       setEsValido(true);
       setMensajeError("");
     }
-
-    return resultado;
   };
   return { handleClick, mensajeError, esValido, valoresCambiados };
 };

@@ -57,7 +57,25 @@ public class HomeController : Controller
         {
             string rpta = "";
             daSQL odaSQL = new daSQL(_configuration, "CNX");
-            rpta = odaSQL.ejecutarComando("dbo.usp_crud_grupo_bien", "@data", "146");
+            rpta = odaSQL.ejecutarComando("dbo.usp_crud_grupo_bien", "@data", "0");
+            return rpta;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al guardar la data...");
+            return "error";
+        }
+    }
+
+    [HttpPost("/Home/GrabarDatosVarios")]
+    public string GrabarDatosVarios()
+    {
+        try
+        {
+            string rpta = "";
+            string datos = Request.Form["data"].ToString();
+            daSQL odaSQL = new daSQL(_configuration, "CNX");
+            rpta = odaSQL.ejecutarComando("dbo.usp_crud_generico01", "@data", datos);
             return rpta;
         }
         catch (Exception ex)

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import useFetch from "../hooks/useFetch";
+import useLazyFetch from "../hooks/useLazyFetch";
 import useValidationFields from "../hooks/useValidationFields";
 import CustomElement from "../components/CustomElement";
 import { memoriaGlobal } from "../components/memoriaGlobal";
@@ -8,18 +9,46 @@ import { memoriaGlobal } from "../components/memoriaGlobal";
 const RegistroGrupoBien01 = () => {
   const location = useLocation();
   const usuario = location.state?.value;
-  const [datasets, setDatasets] = useState({});
+  const [_, setDatasets] = useState({});
   const elementosRef = useRef([]);
+
   const { data, loading, error } = useFetch("/Home/TraerListaGrupoBien");
+  const { runFetch } = useLazyFetch();
 
   const { handleClick, mensajeError, esValido, valoresCambiados } =
     useValidationFields(elementosRef);
 
-  const handleEnvio = useCallback(() => {
-    console.log("Todos los campos requeridos completos en SOLITARIO!");
-    console.log("valoresCambiados:", valoresCambiados);
-    console.log("Contenido memoriaGlobal 3:", memoriaGlobal.container);
-  }, [valoresCambiados]);
+  // INICIO DE CASOS ESPECIFICOS:
+  // ============================
+  const [extraValue, setExtraValue] = useState("");
+  // ============================
+
+  const handleEnvio = useCallback(async () => {
+    if (
+      memoriaGlobal.container.campo &&
+      memoriaGlobal.container.value != null
+    ) {
+      valoresCambiados.campos.unshift(memoriaGlobal.container.campo);
+      valoresCambiados.data.unshift(memoriaGlobal.container.value);
+    }
+    const dataEnviar =
+      usuario.trim() +
+      "~" +
+      valoresCambiados.data.join("|") +
+      "|" +
+      valoresCambiados.campos.join("|");
+
+    console.log("datos a Grabar:", dataEnviar);
+
+    const formData = new FormData();
+    formData.append("data", dataEnviar);
+
+    const result = await runFetch("/Home/GrabarDatosVarios", {
+      method: "POST",
+      body: formData,
+    });
+    console.log("Guardado:", result);
+  }, [valoresCambiados, usuario, runFetch]);
 
   useEffect(() => {
     if (esValido) {
@@ -38,7 +67,13 @@ const RegistroGrupoBien01 = () => {
   }
 
   const handleChange = (e) => {
-    const { value, valor, campo, item } = e.target.dataset;
+    const { value, valor, campo, item, extra } = e.target.dataset;
+    // INICIO DE CASO PUNTUAL
+    // ======================
+    if (extra) {
+      setExtraValue(extra);
+    }
+    // ======================
     setDatasets((prev) => ({
       ...prev,
       [campo]: { value, valor, item },
@@ -49,9 +84,9 @@ const RegistroGrupoBien01 = () => {
   const info = preData?.[0]?.split("|") ?? [];
   const infoMeta = preData?.[1]?.split("|") ?? [];
 
-  const informacion = info.map((valor, idx) => ({
-    data: valor,
-    metadata: infoMeta[idx].split("*"),
+  const informacion = infoMeta.map((meta, idx) => ({
+    data: info[idx] ?? "",
+    metadata: (meta ?? "").split("*"),
   }));
 
   const listasData = data.slice(1);
@@ -62,10 +97,14 @@ const RegistroGrupoBien01 = () => {
   }, {});
 
   // console.log("mapaListas keys:", Object.keys(mapaListas));
-  // console.log("Listas documentos:", mapaListas[9]);
+  // console.log("Listas catalogos:", mapaListas[11]);
 
   return (
     <>
+      <div className="text-xl font-bold mb-4 text-green-800">
+        {memoriaGlobal.container?.value === "" ? "NUEVO" : "EDITAR"}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {informacion.map((datos, idx) => {
           const { data, metadata } = datos;
@@ -105,9 +144,16 @@ const RegistroGrupoBien01 = () => {
                       offsetColumnas: metadata?.[10],
                       ancho: metadata?.[11],
                     }
-                  : { defaultValue: datos.data })}
+                  : metadata[0] === "3.6"
+                    ? {
+                        value: extraValue,
+                        onChange: (e) => setExtraValue(e.target.value),
+                      }
+                    : {
+                        defaultValue: datos.data,
+                      })}
               dataAttrs={{
-                value: data,
+                value: metadata[0] === "3.6" ? extraValue : data,
                 valor: data,
                 campo: metadata[0],
                 item: metadata[6],

@@ -90,16 +90,16 @@ const CustomElement = forwardRef(
         } else if (props.type === "text") {
           value = value.toUpperCase();
         }
+        e.target.value = value;
 
         if (props.type === "checkbox") {
           e.target.dataset.value = e.target.checked ? "1" : "0";
         } else if (props.type === "radio") {
           e.target.dataset.value = e.target.checked ? "1" : "0";
         } else {
-          e.target.dataset.value = e.target.value;
+          e.target.dataset.value = value;
         }
 
-        e.target.value = value;
         if (onChange) onChange(e);
       };
 
@@ -245,7 +245,10 @@ const CustomElement = forwardRef(
         } else if (typeof opt === "object" && opt.value && opt.label) {
           return opt;
         } else {
-          return { value: opt, label: opt };
+          return {
+            value: opt,
+            label: opt,
+          };
         }
       });
 
@@ -256,6 +259,7 @@ const CustomElement = forwardRef(
       const displayOption = overrideOption ?? matchedOption;
       const selectStyle =
         unaLinea === "1" ? { height: "2.7rem" } : { height: "10rem" };
+
       const configTable = {
         title: etiqueta,
         isPaginar: false,
@@ -317,6 +321,7 @@ const CustomElement = forwardRef(
                       configTable={configTable}
                       onSelect={(fila) => {
                         const value = fila[0];
+                        const extra = fila?.[2] ?? "";
                         const label = fila[fila.length - 1];
                         setOverrideOption({ value, label });
                         if (ref && ref.current) {
@@ -329,8 +334,8 @@ const CustomElement = forwardRef(
                         const fakeEvent = {
                           target: {
                             value,
-                            dataset: { value },
-                            option: { value, label },
+                            dataset: { value, extra },
+                            option: { value, label, extra },
                           },
                         };
                         if (onChange) onChange(fakeEvent);

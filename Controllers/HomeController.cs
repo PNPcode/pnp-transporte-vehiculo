@@ -16,6 +16,7 @@ public class HomeController : Controller
         _configuration = configuration;
     }
 
+
     public IActionResult Index()
     {
         ViewBag.IsDevelopment = _env.IsDevelopment();

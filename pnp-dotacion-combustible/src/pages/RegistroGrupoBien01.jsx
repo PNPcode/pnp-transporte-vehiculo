@@ -12,6 +12,9 @@ const RegistroGrupoBien01 = () => {
   const elementosRef = useRef([]);
   const inputRef = useRef(null);
   const [isEdit, setIsEdit] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mensajeToast, setMensajeToast] = useState("");
+  const [tipoToast, setTipoToast] = useState("success");
 
   const { data, loading, error } = useFetch("/Home/TraerListaGrupoBien");
   const { runFetch } = useLazyFetch();
@@ -154,8 +157,13 @@ const RegistroGrupoBien01 = () => {
   };
 
   const handleEnvio = useCallback(async () => {
-    if (!valoresCambiados.data.length && !valoresCambiados.campos.length)
+    if (!valoresCambiados.data.length && !valoresCambiados.campos.length) {
+      setMensajeToast("NO existen datos que enviar");
+      setTipoToast("error");
+      setTimeout(() => setMensajeToast(""), 2000);
       return;
+    }
+
     const hidden100 = elementosRef.current.find(
       (el) => el?.type === "hidden" && el.dataset.campo,
     );
@@ -175,12 +183,39 @@ const RegistroGrupoBien01 = () => {
 
     console.log("Datos a Enviar Datos:", dataEnviar);
 
-    const result = await runFetch("/Home/GrabarDatosVarios", {
-      method: "POST",
-      body: formData,
-    });
+    setIsSubmitting(true);
+    try {
+      const result = await runFetch("/Home/GrabarDatosVarios", {
+        method: "POST",
+        body: formData,
+      });
 
-    console.log("Respuesta Grabacion Datos Datos:", result);
+      console.log("Respuesta Grabacion Datos Datos:", result);
+      if (result) {
+        setMensajeToast("Datos Guardados Correctamente ...");
+        setTipoToast("success");
+        setIsEdit(true);
+
+        if (hidden100 && result.trim() !== "") {
+          hidden100.value = result.trim();
+          hidden100.dataset.value = result.trim();
+        }
+
+        elementosRef.current.forEach((el) => {
+          if (!el) return;
+          el.dataset.valor = el.dataset.value ?? "";
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setMensajeToast("Error al guardar la informacion ...");
+      setTipoToast("error");
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => {
+        setMensajeToast("");
+      }, 2000);
+    }
   }, [valoresCambiados, usuario, runFetch]);
 
   useEffect(() => {
@@ -335,12 +370,27 @@ const RegistroGrupoBien01 = () => {
         })}
       </div>
       <div className="mt-8 mb-2">
-        <CustomElement typeCode={120} onClick={() => handleClick()}>
-          GUARDAR
+        <CustomElement
+          typeCode={120}
+          onClick={() => handleClick()}
+          {...(isSubmitting ? { disabled: true } : {})}
+        >
+          {isSubmitting ? "Guardando..." : "GUARDAR"}
         </CustomElement>
         {mensajeError && (
           <div className="mt-3 p-3 text-sm text-white bg-red-400 rounded-md shadow-md animate-bounce">
             {mensajeError}
+          </div>
+        )}
+        {mensajeToast && (
+          <div
+            className={`mt-3 p-3 text-sm rounded-md shadow-md ${
+              tipoToast === "success"
+                ? "bg-green-700 text-white animate-bounce"
+                : "bg-red-400 text-white animate-bounce"
+            }`}
+          >
+            {mensajeToast}
           </div>
         )}
       </div>

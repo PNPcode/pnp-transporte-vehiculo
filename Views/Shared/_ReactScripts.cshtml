@@ -1,3 +1,7 @@
+@using Microsoft.AspNetCore.Hosting
+@inject IWebHostEnvironment Env
+@using PnpDotacionCombustible.Helpers
+
 @if (ViewBag.IsDevelopment == true)
 {
     <script type="module">
@@ -11,6 +15,12 @@
 }
 else
 {
-    <script type="module" src="/js/home/index.js"></script>
-    <link rel="stylesheet" href="/js/home/assets/index.css" />
+    var entry = "home/index.jsx";
+    var jsPath = ViteHelper.GetViteAsset(entry, Env);
+    var cssPaths = ViteHelper.GetViteCssAssets(entry, Env);
+    foreach (var cssPath in cssPaths)
+    {
+        <link rel="stylesheet" href="@cssPath" />
+    }
+    <script type="module" src="@jsPath"></script>
 }

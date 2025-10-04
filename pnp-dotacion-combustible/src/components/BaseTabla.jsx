@@ -59,6 +59,10 @@ export const BaseTabla = ({ configTable, onSelect }) => {
   const [searchText, setSearchText] = useState("");
   const searchInputRef = useRef(null);
 
+  useEffect(() => {
+    searchInputRef.current?.focus();
+  }, []);
+
   const filteredRows = useMemo(() => {
     if (!searchText.trim()) return dataRows;
     const lower = searchText.toLowerCase();

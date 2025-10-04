@@ -85,5 +85,22 @@ public class HomeController : Controller
         }
     }
 
+    [HttpGet("/Home/RecuperarRegGrupoBien")]
+    public string RecuperarRegGrupoBien(string dato)
+    {
+        try
+        {
+            string rpta = "";
+            daSQL odaSQL = new daSQL(_configuration, "CNX");
+            rpta = odaSQL.ejecutarComando("dbo.usp_crud_search_grupo_bien", "@data", dato);
+            return rpta;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al guardar la data...");
+            return "error";
+        }
+    }
+
 
 }

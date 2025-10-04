@@ -17,6 +17,7 @@ const useValidationFields = (elementosRef) => {
       if (!wrapper) return;
       const input = wrapper.querySelector("input, select, textarea") || wrapper;
       if (!input) return;
+      if (input.type === "hidden") return;
 
       const dsValue = input.dataset?.value ?? "";
       const dsValor = input.dataset?.valor ?? "";

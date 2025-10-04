@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { forwardRef } from "react";
-import { memoriaGlobal } from "./memoriaGlobal";
 import { BaseTabla } from "./BaseTabla";
 
 const CustomElement = forwardRef(
@@ -18,9 +17,16 @@ const CustomElement = forwardRef(
 
     if (typeCode === 100) {
       const { value, campo } = dataAttrs;
-      memoriaGlobal.container.value = value;
-      memoriaGlobal.container.campo = campo;
-      return null;
+      return (
+        <input
+          type="hidden"
+          ref={ref}
+          data-campo={campo}
+          data-value={value}
+          value={value}
+          defaultValue={value}
+        />
+      );
     }
 
     let Tag = "div";
@@ -75,6 +81,17 @@ const CustomElement = forwardRef(
 
     if (Tag === "input") {
       const { etiqueta, onChange, tipoDato, ...restProps } = props;
+
+      useEffect(() => {
+        if (ref && ref.current && datasetProps) {
+          Object.entries(datasetProps).forEach(([k, v]) => {
+            if (v !== undefined && v !== null) {
+              ref.current.setAttribute(k, String(v));
+            }
+          });
+        }
+      }, [datasetProps, ref]);
+
       const handleChange = (e) => {
         let value = e.target.value;
 
@@ -167,6 +184,9 @@ const CustomElement = forwardRef(
             {...datasetProps}
             {...restProps}
             defaultValue={restProps.defaultValue}
+            {...(props.type === "checkbox"
+              ? { checked: datasetProps["data-value"] === "1" }
+              : {})}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             className={`block w-full rounded-md border bg-gray-50 px-3 py-2 shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 border-gray-300 ${restProps.disabled ? "opacity-50 cursor-not-allowed bg-gray-200 text-gray-500" : ""}`}
@@ -240,23 +260,80 @@ const CustomElement = forwardRef(
 
       const parsedOptions = optionsProp.map((opt) => {
         if (typeof opt === "string" && opt.includes("|")) {
-          const [value, label] = opt.split("|");
-          return { value, label };
-        } else if (typeof opt === "object" && opt.value && opt.label) {
-          return opt;
-        } else {
+          const parts = opt.split("|");
+          const value = parts[0];
+          const label = parts[parts.length - 1] ?? parts[0];
           return {
-            value: opt,
-            label: opt,
+            value: String(value),
+            label: String(label),
+            raw: opt,
+            parts,
+          };
+        } else if (typeof opt === "object" && opt.value && opt.label) {
+          const raw = opt.raw ?? `${opt.value}|${opt.label}`;
+          const parts = String(raw).split("|");
+          return {
+            value: String(opt.value ?? parts[0]),
+            label: String(opt.label ?? parts[parts.length - 1]),
+            raw,
+            parts,
+          };
+        } else {
+          const raw = String(opt);
+          const parts = raw.split("|");
+          return {
+            value: String(parts[0]),
+            label: parts[parts.length - 1] ?? parts[0],
+            raw,
+            parts,
           };
         }
       });
 
-      const selectedValue = datasetProps["data-value"];
-      const matchedOption = parsedOptions.find(
-        (opt) => opt.value === selectedValue,
-      );
+      const candidataRaw = String(datasetProps["data-value"] ?? "").trim();
+      const candidataValor = String(datasetProps["data-valor"] ?? "").trim();
+      const candidataDefault = String(restProps.defaultValue ?? "").trim();
+
+      const candidatos = [
+        candidataRaw,
+        candidataValor,
+        candidataDefault,
+      ].filter(Boolean);
+
+      const matchesCandidate = (hay) =>
+        candidatos.some(
+          (c) => String(hay ?? "").trim() === String(c ?? "").trim(),
+        );
+
+      const matchedOption = parsedOptions.find((opt) => {
+        if (!opt) return false;
+        if (matchesCandidate(opt.value)) return true;
+        if (
+          Array.isArray(opt.parts) &&
+          opt.parts.some((p) => matchesCandidate(p))
+        )
+          return true;
+        return false;
+      });
+
       const displayOption = overrideOption ?? matchedOption;
+
+      useEffect(() => {
+        if (ref && ref.current && displayOption) {
+          try {
+            if (displayOption.value !== undefined) {
+              ref.current.dataset.value = String(displayOption.value);
+            }
+            const maybeExtra = displayOption.parts?.[2] ?? displayOption.extra;
+            if (maybeExtra !== undefined) {
+              ref.current.dataset.extra = String(maybeExtra);
+            }
+          } catch (err) {
+            console.log(err);
+          }
+        }
+      }, [displayOption, ref]);
+
       const selectStyle =
         unaLinea === "1" ? { height: "2.7rem" } : { height: "10rem" };
 
@@ -323,10 +400,12 @@ const CustomElement = forwardRef(
                         const value = fila[0];
                         const extra = fila?.[2] ?? "";
                         const label = fila[fila.length - 1];
-                        setOverrideOption({ value, label });
+                        setOverrideOption({ value, label, extra });
                         if (ref && ref.current) {
                           try {
                             ref.current.dataset.value = value;
+                            ref.current.dataset.extra = extra;
+                            ref.current.value = value;
                           } catch (err) {
                             console.log(err);
                           }

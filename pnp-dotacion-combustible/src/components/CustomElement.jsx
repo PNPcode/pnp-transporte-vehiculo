@@ -171,8 +171,8 @@ const CustomElement = forwardRef(
         );
       }
       return (
-        <label className="block w-full">
-          <div className="flex items-center gap-1 mb-1">
+        <label className="block w-full" style={restProps.style}>
+          <div className="flex items-center gap-1 mb-1" style={restProps.style}>
             <span className="block text-sm font-bold text-green-900 mb-1">
               Ingrese {etiqueta}
             </span>
@@ -399,12 +399,14 @@ const CustomElement = forwardRef(
                       onSelect={(fila) => {
                         const value = fila[0];
                         const extra = fila?.[2] ?? "";
+                        const descr = fila?.[3] ?? "";
                         const label = fila[fila.length - 1];
-                        setOverrideOption({ value, label, extra });
+                        setOverrideOption({ value, label, extra, descr });
                         if (ref && ref.current) {
                           try {
                             ref.current.dataset.value = value;
                             ref.current.dataset.extra = extra;
+                            ref.current.dataset.descr = descr;
                             ref.current.value = value;
                           } catch (err) {
                             console.log(err);
@@ -413,8 +415,8 @@ const CustomElement = forwardRef(
                         const fakeEvent = {
                           target: {
                             value,
-                            dataset: { value, extra },
-                            option: { value, label, extra },
+                            dataset: { value, extra, descr },
+                            option: { value, label, extra, descr },
                           },
                         };
                         if (onChange) onChange(fakeEvent);
@@ -460,13 +462,19 @@ const CustomElement = forwardRef(
             ref={ref}
             {...datasetProps}
             {...restProps}
-            defaultValue={datasetProps["data-value"] ?? ""}
+            defaultValue={
+              restProps.isDefault === 1
+                ? (optionsProp?.[0]?.split("|")[0] ?? "")
+                : (datasetProps["data-value"] ?? "")
+            }
             onChange={handleChange}
             className={`block w-full rounded-md border bg-gray-50 px-3 py-2 shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 border-gray-300 ${restProps.disabled ? "opacity-50 cursor-not-allowed bg-gray-200 text-gray-500" : ""}`}
           >
-            <option value="" disabled>
-              Seleccione --
-            </option>
+            {restProps.isDefault !== 1 && (
+              <option value="" disabled>
+                Seleccione --
+              </option>
+            )}
             {children ??
               optionsProp.map((datos, idx) => {
                 const [value, label] = datos.split("|");

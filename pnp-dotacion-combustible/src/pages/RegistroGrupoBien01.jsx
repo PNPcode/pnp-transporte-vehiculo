@@ -25,6 +25,7 @@ const RegistroGrupoBien01 = () => {
   // INICIO DE CASOS ESPECIFICOS:
   // =============================================
   const [extraValue, setExtraValue] = useState("");
+  const [descrValue, setDescrValue] = useState("");
   // ==============================================
 
   useEffect(() => {
@@ -60,9 +61,9 @@ const RegistroGrupoBien01 = () => {
         !info.length ||
         info[0].trim() === ""
       ) {
-        console.log("DATA RECUPERADA VACÍA");
         setDatasets({});
         setExtraValue("");
+        setDescrValue("");
         elementosRef.current.forEach((el) => {
           if (!el) return;
           if (
@@ -115,6 +116,24 @@ const RegistroGrupoBien01 = () => {
 
           if (campo === "3.6") {
             setExtraValue(valor ?? "");
+            const el = elementosRef.current.find(
+              (ref) => ref?.dataset?.campo === campo,
+            );
+            if (el) {
+              el.value = valor;
+              el.dataset.value = valor;
+              el.dataset.valor = valor;
+              el.dispatchEvent(new Event("input", { bubbles: true }));
+            }
+            setDatasets((prev) => ({
+              ...prev,
+              [campo]: { value: valor, valor: valor, item: item ?? "" },
+            }));
+            return;
+          }
+
+          if (campo === "3.5") {
+            setDescrValue(valor ?? "");
             const el = elementosRef.current.find(
               (ref) => ref?.dataset?.campo === campo,
             );
@@ -224,22 +243,6 @@ const RegistroGrupoBien01 = () => {
     }
   }, [esValido, handleEnvio]);
 
-  const handleChange = (e) => {
-    const { value, valor, campo, item, extra } = e.target.dataset;
-
-    // INICIO DE CASO PUNTUAL
-    // ======================
-    if (extra) {
-      setExtraValue(extra);
-    }
-    // ======================
-
-    setDatasets((prev) => ({
-      ...prev,
-      [campo]: { value, valor, item },
-    }));
-  };
-
   const preData = data?.[0]?.split("~") ?? [];
   const info = preData?.[0]?.split("|") ?? [];
   const infoMeta = preData?.[1]?.split("|") ?? [];
@@ -256,7 +259,11 @@ const RegistroGrupoBien01 = () => {
     if (campo36 && extraValue === "") {
       setExtraValue(campo36.data ?? "");
     }
-  }, [informacion, extraValue]);
+    const campo35 = informacion.find((item) => item.metadata[0] === "3.5");
+    if (campo35 && descrValue === "") {
+      setDescrValue(campo35.data ?? "");
+    }
+  }, [informacion, extraValue, descrValue]);
   // ======================================================================
 
   const listasData = (data ?? []).slice(1);
@@ -266,6 +273,36 @@ const RegistroGrupoBien01 = () => {
     acc[itemKey] = opciones;
     return acc;
   }, {});
+
+  const handleChange = (e) => {
+    const { value, valor, campo, item, extra, descr } = e.target.dataset;
+
+    // INICIO DE CASO PUNTUAL
+    // ======================
+    if (extra) {
+      setExtraValue(extra);
+    }
+    if (descr) {
+      setDescrValue(descr);
+    }
+    // ======================
+
+    setDatasets((prev) => ({
+      ...prev,
+      [campo]: { value, valor, item },
+    }));
+
+    // if (item === "9") {
+    //   const filtroAyuda = mapaListas[11].filter((el) => {
+    //     const [_, grupo, ...sigue] = el.split("|");
+    //     if (value === grupo) {
+    //       return;
+    //     }
+    //   });
+
+    //   console.log("Datos Filtrados:", filtroAyuda);
+    // }
+  };
 
   if (loading) {
     return <div>Cargando datos...</div>;
@@ -277,26 +314,38 @@ const RegistroGrupoBien01 = () => {
     return <div>No hay datos disponibles</div>;
   }
 
+  const llenarCombos = (valor, value) => {
+    const lista = mapaListas?.[valor] ?? [];
+    if (valor !== "9") return lista;
+    return lista.filter((el) => {
+      const [item] = el.split("|");
+      console.log("elemento:", item, "value", value);
+      return item === value;
+    });
+  };
+
   // console.log("mapaListas keys:", Object.keys(mapaListas));
   // console.log("Listas catalogos:", mapaListas[11]);
 
   return (
     <>
-      <div className="text-xl font-bold mb-4 text-green-800 flex items-center gap-2">
-        {isEdit ? "EDITAR" : "NUEVO"}
-        <input
-          type="text"
-          ref={inputRef}
-          placeholder="Buscar..."
-          className="px-3 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-        />
-        <button
-          type="button"
-          onClick={handleBuscarClick}
-          className="px-4 py-1 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-md shadow-md transition-colors"
-        >
-          Buscar
-        </button>
+      <div className="text-xl font-bold mb-4 text-green-800 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            ref={inputRef}
+            placeholder="Buscar..."
+            className="px-3 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+          />
+          <button
+            type="button"
+            onClick={handleBuscarClick}
+            className="px-4 py-1 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-md shadow-md transition-colors"
+          >
+            Buscar
+          </button>
+        </div>
+        <span className="text-green-800">{isEdit ? "EDITAR" : "NUEVO"}</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -306,6 +355,7 @@ const RegistroGrupoBien01 = () => {
           let maxLength = metadata?.[3] ? Number(metadata[3]) : 0;
           const isRequired = metadata?.[1] === "0";
           const isDisabled = metadata?.[8] === "1";
+          const hideElement = metadata?.[12] === "1";
           maxLength = metadata?.[4] === "" ? maxLength : Number(metadata[4]);
 
           return (
@@ -315,6 +365,17 @@ const RegistroGrupoBien01 = () => {
               typeCode={typeCode}
               etiqueta={metadata[7] ?? ""}
               placeholder={metadata[7] ?? ""}
+              style={
+                hideElement
+                  ? {
+                      visibility: "hidden",
+                      position: "absolute",
+                      width: 0,
+                      height: 0,
+                      overflow: "hidden",
+                    }
+                  : {}
+              }
               {...(maxLength > 0 ? { maxLength } : {})}
               {...(isDisabled ? { disabled: true } : {})}
               {...(isRequired ? { required: true } : {})}
@@ -349,21 +410,31 @@ const RegistroGrupoBien01 = () => {
                         valor: extraValue,
                         onChange: (e) => setExtraValue(e.target.value),
                       }
-                    : {
-                        defaultValue: datos.data,
-                      })}
+                    : metadata[0] === "3.5"
+                      ? {
+                          value: descrValue,
+                          valor: descrValue,
+                          onChange: (e) => setDescrValue(e.target.value),
+                        }
+                      : {
+                          defaultValue: datos.data,
+                        })}
               dataAttrs={{
                 value:
                   metadata[0] === "3.6"
                     ? extraValue
-                    : (datasets[metadata[0]]?.value ?? data),
+                    : metadata[0] === "3.5"
+                      ? descrValue
+                      : (datasets[metadata[0]]?.value ?? data),
                 valor: data,
                 campo: metadata[0],
                 item: metadata[6],
               }}
               onChange={handleChange}
               {...(mapaListas[metadata[6]]
-                ? { options: mapaListas[metadata[6]] }
+                ? {
+                    options: llenarCombos(metadata[6], data),
+                  }
                 : {})}
             />
           );

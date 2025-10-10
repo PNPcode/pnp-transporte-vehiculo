@@ -103,5 +103,22 @@ public class HomeController : Controller
         }
     }
 
+    [HttpGet("/Home/TraerListaVehiculo")]
+    public string TraerListaVehiculo()
+    {
+        try
+        {
+            string rpta = "";
+            daSQL odaSQL = new daSQL(_configuration, "CNX");
+            rpta = odaSQL.ejecutarComando("dbo.usp_crud_vehiculo", "@data", "335287");
+            return rpta;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al guardar la data...");
+            return "error";
+        }
+    }
+
 
 }

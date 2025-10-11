@@ -16,7 +16,9 @@ const CrudVehiculoPolicial03 = () => {
   const [mensajeToast, setMensajeToast] = useState("");
   const [tipoToast, setTipoToast] = useState("success");
 
-  const { data, loading, error } = useFetch("/Home/TraerListaVehiculo");
+  const API_RESULT_LISTAR = "/Home/TraerListaVehiculo";
+
+  const { data, loading, error } = useFetch(API_RESULT_LISTAR);
   const { runFetch } = useLazyFetch();
 
   const { handleClick, mensajeError, esValido, valoresCambiados } =
@@ -33,9 +35,9 @@ const CrudVehiculoPolicial03 = () => {
 
   const handleBuscarClick = async () => {
     if (inputRef.current) {
-      const valorParametro = inputRef.current.value;
+      const valorParametro = `zz|${inputRef.current.value}`;
       const result = await runFetch(
-        `/Home/RecuperarRegGrupoBien?dato=${encodeURIComponent(valorParametro)}`,
+        `${API_RESULT_LISTAR}Param?dato=${encodeURIComponent(valorParametro)}`,
         {
           method: "GET",
           headers: {
@@ -237,17 +239,7 @@ const CrudVehiculoPolicial03 = () => {
   const llenarCombos = (valor, value) => {
     const lista = mapaListas?.[valor] ?? [];
     return lista;
-    // if (valor !== "9") return lista;
-    // return lista.filter((el) => {
-    //   const [item] = el.split("|");
-    //   console.log("elemento:", item, "value", value);
-    //   return item === value;
-    // });
   };
-
-  // console.log("mapaListas keys:", Object.keys(mapaListas));
-  // console.log("Listas catalogos:", mapaListas[11]);
-  // console.log("informacion:", informacion);
 
   return (
     <>
@@ -287,6 +279,7 @@ const CrudVehiculoPolicial03 = () => {
               typeCode={typeCode}
               etiqueta={metadata[7] ?? ""}
               placeholder={metadata[7] ?? ""}
+              popupTipo={metadata[6] ?? ""}
               style={
                 hideElement
                   ? {

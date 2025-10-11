@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { forwardRef } from "react";
 import { BaseTabla } from "./BaseTabla";
+import PopupBusqueda from "./PopupBusqueda";
 
 const CustomElement = forwardRef(
   ({ typeCode, dataAttrs = {}, options: optionsProp = [], ...props }, ref) => {
     const [showPopup, setShowPopup] = useState(false);
     const [overrideOption, setOverrideOption] = useState(null);
+    const [showPopupEspecial, setShowPopupEspecial] = useState(false);
 
     const datasetProps = Object.entries(dataAttrs).reduce(
       (acc, [key, value]) => {
@@ -349,7 +351,13 @@ const CustomElement = forwardRef(
         <div className="block w-full">
           <label
             className="block w-3/4 mb-1 px-3 rounded-md border border-gray-400 bg-indigo-50 hover:bg-indigo-100 text-sm font-bold text-green-900 cursor-pointer shadow-sm transition"
-            onClick={() => setShowPopup(true)}
+            onClick={() => {
+              if (props.popupTipo === "0") {
+                setShowPopupEspecial(true);
+              } else {
+                setShowPopup(true);
+              }
+            }}
           >
             <span className="text-sm font-bold text-green-900">
               {etiqueta} ( ... )
@@ -436,16 +444,44 @@ const CustomElement = forwardRef(
               </div>
             </div>
           )}
+
+          {showPopupEspecial && (
+            <PopupBusqueda
+              onClose={() => setShowPopupEspecial(false)}
+              etiqueta={etiqueta}
+              ancho={ancho}
+              extraProps={restProps}
+              listaDatos={optionsProp}
+            />
+          )}
         </div>
       );
     }
 
     if (Tag === "select") {
-      const { etiqueta, onChange, children, ...restProps } = props;
+      const { etiqueta, onChange, children, isDefault, ...restProps } = props;
       const handleChange = (e) => {
         const value = e.target.value;
         e.target.dataset.value = value;
         if (onChange) onChange(e);
+      };
+
+      const handleRef = (el) => {
+        if (ref) {
+          if (typeof ref === "function") ref(el);
+          else ref.current = el;
+        }
+        if (el && el.options.length > 0) {
+          const currentValue = el.dataset.value || el.value;
+          const match = Array.from(el.options).some(
+            (opt) => opt.value === currentValue,
+          );
+          if (!match) {
+            el.selectedIndex = 0;
+            el.dataset.value = el.options[0].value;
+            el.dataset.valor = el.options[0].value;
+          }
+        }
       };
 
       return (
@@ -459,18 +495,18 @@ const CustomElement = forwardRef(
             </div>
           )}
           <select
-            ref={ref}
+            ref={handleRef}
             {...datasetProps}
             {...restProps}
             defaultValue={
-              restProps.isDefault === 1
+              isDefault === 1
                 ? (optionsProp?.[0]?.split("|")[0] ?? "")
                 : (datasetProps["data-value"] ?? "")
             }
             onChange={handleChange}
             className={`block w-full rounded-md border bg-gray-50 px-3 py-2 shadow-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 border-gray-300 ${restProps.disabled ? "opacity-50 cursor-not-allowed bg-gray-200 text-gray-500" : ""}`}
           >
-            {restProps.isDefault !== 1 && (
+            {isDefault !== 1 && (
               <option value="" disabled>
                 Seleccione --
               </option>
@@ -490,7 +526,7 @@ const CustomElement = forwardRef(
     }
 
     if (Tag === "selectMulti") {
-      const { etiqueta, onChange, children, ...restProps } = props;
+      const { etiqueta, onChange, children, unaLinea, ...restProps } = props;
       const handleChange = (e) => {
         const selectedValues = Array.from(e.target.selectedOptions).map(
           (opt) => opt.value,
@@ -498,6 +534,9 @@ const CustomElement = forwardRef(
         e.target.dataset.value = selectedValues.join(",");
         if (onChange) onChange(e);
       };
+
+      const selectStyle =
+        unaLinea === "1" ? { height: "2.7rem" } : { height: "10rem" };
 
       return (
         <label className="block w-full">
@@ -512,6 +551,7 @@ const CustomElement = forwardRef(
           <select
             ref={ref}
             multiple
+            style={selectStyle}
             {...datasetProps}
             {...restProps}
             onChange={handleChange}

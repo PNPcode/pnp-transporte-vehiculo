@@ -33,8 +33,6 @@ public class HomeController : Controller
             string clave = Request.Form["data2"].ToString();
             string usuario = $"{user}|{clave}";
 
-            _logger.LogInformation("============== Usuario: {usuario}  ==========", usuario);
-
             daSQL odaSQL = new daSQL(_configuration, "CNX");
             rpta = odaSQL.ejecutarComando("dbo.usp_loginXmenusTransporte", "@data", usuario);
             if (rpta == "")
@@ -110,7 +108,7 @@ public class HomeController : Controller
         {
             string rpta = "";
             daSQL odaSQL = new daSQL(_configuration, "CNX");
-            rpta = odaSQL.ejecutarComando("dbo.usp_crud_vehiculo", "@data", "335287");
+            rpta = odaSQL.ejecutarComando("dbo.usp_crud_vehiculo", "@data", "0");
             return rpta;
         }
         catch (Exception ex)
@@ -120,5 +118,21 @@ public class HomeController : Controller
         }
     }
 
+    [HttpGet("/Home/TraerListaVehiculoParam")]
+    public string TraerListaVehiculoParam(string dato)
+    {
+        try
+        {
+            string rpta = "";
+            daSQL odaSQL = new daSQL(_configuration, "CNX");
+            rpta = odaSQL.ejecutarComando("dbo.usp_crud_vehiculo", "@data", dato);
+            return rpta;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al guardar la data...");
+            return "error";
+        }
+    }
 
 }

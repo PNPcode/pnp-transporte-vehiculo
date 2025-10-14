@@ -135,4 +135,22 @@ public class HomeController : Controller
         }
     }
 
+    [HttpPost("/Home/TraerDatosGrupoBienAyudas")]
+    public string TraerDatosGrupoBienAyudas()
+    {
+        try
+        {
+            string rpta = "";
+            string datos = Request.Form["data"].ToString();
+            daSQL odaSQL = new daSQL(_configuration, "CNX");
+            rpta = odaSQL.ejecutarComando("dbo.usp_buscar_Grupo_bien", "@data", datos);
+            return rpta;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al guardar la data...");
+            return "error";
+        }
+    }
+
 }

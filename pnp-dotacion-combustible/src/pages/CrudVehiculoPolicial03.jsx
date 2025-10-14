@@ -4,6 +4,7 @@ import useFetch from "../hooks/useFetch";
 import useLazyFetch from "../hooks/useLazyFetch";
 import useValidationFields from "../hooks/useValidationFields";
 import CustomElement from "../components/CustomElement";
+import { useSelectStore } from "../store/selectStore";
 
 const CrudVehiculoPolicial03 = () => {
   const location = useLocation();
@@ -15,7 +16,9 @@ const CrudVehiculoPolicial03 = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
   const [tipoToast, setTipoToast] = useState("success");
+  const [refreshKey, setRefreshKey] = useState(0);
 
+  const selectedItems = useSelectStore((state) => state.selectedItems);
   const API_RESULT_LISTAR = "/Home/TraerListaVehiculo";
 
   const { data, loading, error } = useFetch(API_RESULT_LISTAR);
@@ -33,7 +36,9 @@ const CrudVehiculoPolicial03 = () => {
     }
   }, []);
 
+  const listaAuxRef = useRef("");
   const handleBuscarClick = async () => {
+    listaAuxRef.current = "";
     if (inputRef.current) {
       const valorParametro = `zz|${inputRef.current.value}`;
       const result = await runFetch(
@@ -47,7 +52,8 @@ const CrudVehiculoPolicial03 = () => {
         },
       );
 
-      const preData = result?.split("~") ?? [];
+      // const preData = result.split("~");
+      const preData = typeof result === "string" ? result.split("~") : [];
       const info = preData?.[0]?.split("|") ?? [];
       const infoMeta = preData?.[1]?.split("|") ?? [];
 
@@ -58,6 +64,14 @@ const CrudVehiculoPolicial03 = () => {
         info[0].trim() === ""
       ) {
         setDatasets({});
+
+        try {
+          const { setSelectedItems } = useSelectStore.getState();
+          setSelectedItems([]);
+        } catch (err) {
+          console.warn("No se pudo limpiar Zustand:", err);
+        }
+
         elementosRef.current.forEach((el) => {
           if (!el) return;
           if (
@@ -73,12 +87,19 @@ const CrudVehiculoPolicial03 = () => {
             el.dataset.value = "";
             el.dataset.valor = "";
           }
+          if (el && el.tagName === "SELECT") {
+            while (el.options.length > 0) {
+              el.remove(0);
+            }
+            setRefreshKey((k) => k + 1);
+          }
         });
+
+        Object.keys(mapaListas).forEach((key) => (mapaListas[key] = []));
         setIsEdit(false);
         return;
       }
-
-      console.log("DATA RECUPAREDA:", result);
+      listaAuxRef.current = info?.[1] + "|" + info?.[info.length - 1];
 
       const informacion = infoMeta.map((meta, idx) => ({
         data: info[idx] ?? "",
@@ -110,7 +131,6 @@ const CrudVehiculoPolicial03 = () => {
           const el = elementosRef.current.find(
             (ref) => ref?.dataset?.campo === campo,
           );
-
           if (el) {
             if (
               el.tagName === "INPUT" ||
@@ -121,11 +141,29 @@ const CrudVehiculoPolicial03 = () => {
               el.dataset.value = valor;
               el.dataset.valor = valor;
               el.dispatchEvent(new Event("input", { bubbles: true }));
-
               setDatasets((prev) => ({
                 ...prev,
                 [campo]: { value: valor, valor: valor, item: item ?? "" },
               }));
+
+              const typeCode = item.metadata?.[5];
+              const popupTipo = item.metadata?.[6];
+              if (
+                typeCode === "151" &&
+                popupTipo === "0" &&
+                listaAuxRef.current !== ""
+              ) {
+                const partes = listaAuxRef.current.split("|");
+                const listaFormateada =
+                  partes.length > 1 ? [`${partes[0]}|${partes[1]}`] : [];
+                setDatasets((prev) => ({
+                  ...prev,
+                  [campo]: {
+                    ...(prev[campo] ?? {}),
+                    listaAux: listaFormateada,
+                  },
+                }));
+              }
             }
           }
         });
@@ -166,12 +204,12 @@ const CrudVehiculoPolicial03 = () => {
         body: formData,
       });
 
-      console.log("Respuesta Grabacion Datos Datos:", result);
       if (result) {
         setMensajeToast("Datos Guardados Correctamente ...");
         setTipoToast("success");
         setIsEdit(true);
 
+        console.log("Respuesta Grabacion Datos Datos:", result);
         if (hidden100 && result.trim() !== "") {
           hidden100.value = result.trim();
           hidden100.dataset.value = result.trim();
@@ -200,7 +238,7 @@ const CrudVehiculoPolicial03 = () => {
     }
   }, [esValido, handleEnvio]);
 
-  const preData = data?.[0]?.split("~") ?? [];
+  const preData = typeof data?.[0] === "string" ? data?.[0]?.split("~") : [];
   const info = preData?.[0]?.split("|") ?? [];
   const infoMeta = preData?.[1]?.split("|") ?? [];
 
@@ -274,7 +312,7 @@ const CrudVehiculoPolicial03 = () => {
 
           return (
             <CustomElement
-              key={idx}
+              key={`${idx}-${refreshKey}`}
               ref={(el) => (elementosRef.current[idx] = el)}
               typeCode={typeCode}
               etiqueta={metadata[7] ?? ""}
@@ -330,9 +368,16 @@ const CrudVehiculoPolicial03 = () => {
                 item: metadata[6],
               }}
               onChange={handleChange}
-              {...(mapaListas[metadata[6]]
+              {...(mapaListas[metadata[6]] || datasets[metadata[0]]?.listaAux
                 ? {
-                    options: llenarCombos(metadata[6], data),
+                    options: (() => {
+                      const base = llenarCombos(metadata[6], data) || [];
+                      const auxRaw = datasets[metadata[0]]?.listaAux;
+                      const auxArr = Array.isArray(auxRaw)
+                        ? auxRaw.filter((v) => v && v.trim() !== "")
+                        : [];
+                      return base.concat(auxArr);
+                    })(),
                   }
                 : {})}
             />
@@ -360,6 +405,7 @@ const CrudVehiculoPolicial03 = () => {
                 : "bg-red-400 text-white animate-bounce"
             }`}
           >
+            listaFormateada
             {mensajeToast}
           </div>
         )}

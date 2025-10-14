@@ -1,13 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { forwardRef } from "react";
 import { BaseTabla } from "./BaseTabla";
 import PopupBusqueda from "./PopupBusqueda";
+import { useSelectStore } from "../store/selectStore";
 
 const CustomElement = forwardRef(
   ({ typeCode, dataAttrs = {}, options: optionsProp = [], ...props }, ref) => {
     const [showPopup, setShowPopup] = useState(false);
     const [overrideOption, setOverrideOption] = useState(null);
     const [showPopupEspecial, setShowPopupEspecial] = useState(false);
+    const [usarHardcoded, setUsarHardcoded] = useState(false);
+    const [hardcodedOption, setHardcodedOption] = useState(null);
+    const [dataValue, setDataValue] = useState("");
+
+    const selectedItems = useSelectStore((state) => state.selectedItems);
 
     const datasetProps = Object.entries(dataAttrs).reduce(
       (acc, [key, value]) => {
@@ -260,6 +266,31 @@ const CustomElement = forwardRef(
         if (onChange) onChange(e);
       };
 
+      const handleChangeDesdePopup = (e) => {
+        let newValues = [];
+        if (e?.target?.selectedOptions) {
+          newValues = Array.from(e.target.selectedOptions).map(
+            (opt) => opt.value,
+          );
+        } else if (e?.target?.option) {
+          const { value, label, extra, descr } = e.target.option;
+          newValues = [value];
+          if (ref && ref.current) {
+            try {
+              ref.current.value = value;
+              ref.current.dataset.value = value;
+              ref.current.dataset.label = label;
+              ref.current.dataset.extra = extra ?? "";
+              ref.current.dataset.descr = descr ?? "";
+            } catch (err) {
+              console.log(err);
+            }
+          }
+        }
+        e.target.dataset.value = newValues.join(",");
+        if (onChange) onChange(e);
+      };
+
       const parsedOptions = optionsProp.map((opt) => {
         if (typeof opt === "string" && opt.includes("|")) {
           const parts = opt.split("|");
@@ -336,6 +367,14 @@ const CustomElement = forwardRef(
         }
       }, [displayOption, ref]);
 
+      useEffect(() => {
+        if (hardcodedOption?.value) {
+          setDataValue(hardcodedOption.value);
+        } else {
+          setDataValue("");
+        }
+      }, [hardcodedOption]);
+
       const selectStyle =
         unaLinea === "1" ? { height: "2.7rem" } : { height: "10rem" };
 
@@ -353,6 +392,8 @@ const CustomElement = forwardRef(
             className="block w-3/4 mb-1 px-3 rounded-md border border-gray-400 bg-indigo-50 hover:bg-indigo-100 text-sm font-bold text-green-900 cursor-pointer shadow-sm transition"
             onClick={() => {
               if (props.popupTipo === "0") {
+                setUsarHardcoded(false);
+                setHardcodedOption(null);
                 setShowPopupEspecial(true);
               } else {
                 setShowPopup(true);
@@ -371,12 +412,21 @@ const CustomElement = forwardRef(
             disabled
             {...datasetProps}
             {...restProps}
-            data-value={displayOption?.value ?? datasetProps["data-value"]}
+            data-value={
+              dataValue || displayOption?.value || datasetProps["data-value"]
+            }
             onChange={handleChange}
             style={selectStyle}
             className="block w-full rounded-md border  px-3 py-2 shadow-sm opacity-50 cursor-not-allowed bg-gray-200 text-gray-500"
           >
-            {displayOption ? (
+            {usarHardcoded && hardcodedOption ? (
+              <option
+                value={hardcodedOption.value}
+                style={{ fontWeight: "bold", color: "blue" }}
+              >
+                {hardcodedOption.label}
+              </option>
+            ) : displayOption ? (
               <option
                 value={displayOption.value}
                 style={{ fontWeight: "bold" }}
@@ -447,11 +497,42 @@ const CustomElement = forwardRef(
 
           {showPopupEspecial && (
             <PopupBusqueda
-              onClose={() => setShowPopupEspecial(false)}
+              onClose={() => {
+                const { selectedItems: currentItems } =
+                  useSelectStore.getState();
+                setShowPopupEspecial(false);
+                if (currentItems && currentItems.length > 0) {
+                  const { value, label } = currentItems[0];
+                  setUsarHardcoded(true);
+                  setHardcodedOption({
+                    value: value ?? "",
+                    label: label ?? "",
+                  });
+                  if (ref?.current) {
+                    ref.current.dataset.value = value ?? "";
+                    ref.current.dataset.label = label ?? "";
+                    ref.current.value = value ?? "";
+                    setDataValue(value ?? "");
+                  }
+                }
+              }}
               etiqueta={etiqueta}
               ancho={ancho}
-              extraProps={restProps}
               listaDatos={optionsProp}
+              onChange={handleChangeDesdePopup}
+              parentRef={ref}
+              ref={ref}
+              triggerChange={(value, label) => {
+                if (ref && ref.current) {
+                  ref.current.dataset.value = value;
+                  ref.current.dataset.label = label;
+                  ref.current.value = value;
+                  if (onChange) {
+                    const fakeEvent = { target: ref.current };
+                    onChange(fakeEvent);
+                  }
+                }
+              }}
             />
           )}
         </div>

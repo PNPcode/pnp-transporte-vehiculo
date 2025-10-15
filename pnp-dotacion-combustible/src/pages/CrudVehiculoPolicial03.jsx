@@ -18,6 +18,8 @@ const CrudVehiculoPolicial03 = () => {
   const [tipoToast, setTipoToast] = useState("success");
   const [refreshKey, setRefreshKey] = useState(0);
   const [datoModelos, setDatoModelos] = useState("");
+  const [closeChild, setCloseChild] = useState(false);
+  const closeChildRef = useRef(closeChild);
 
   const selectedItems = useSelectStore((state) => state.selectedItems);
   const API_RESULT_LISTAR = "/Home/TraerListaVehiculo";
@@ -27,6 +29,10 @@ const CrudVehiculoPolicial03 = () => {
 
   const { handleClick, mensajeError, esValido, valoresCambiados } =
     useValidationFields(elementosRef);
+
+  useEffect(() => {
+    closeChildRef.current = closeChild;
+  }, [closeChild]);
 
   useEffect(() => {
     const hidden100 = elementosRef.current.find(
@@ -280,12 +286,37 @@ const CrudVehiculoPolicial03 = () => {
     return lista;
   };
 
-  const handlePopup = () => {
-    const el = elementosRef.current.find((el) => el?.dataset?.campo === "1.10");
-    const valor = el?.dataset?.value;
-    setDatoModelos(valor);
-    if (valor == "") {
-      alert("debe seleccionar una marca");
+  const handlePopup = (campo) => {
+    if (campo === "1.11") {
+      const elMarca = elementosRef.current.find(
+        (el) => el?.dataset?.campo === "1.10",
+      );
+      const valorMarca = elMarca?.dataset?.value ?? "";
+      setDatoModelos(valorMarca);
+      if (valorMarca === "") {
+        alert("debe seleccionar una marca");
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handlePopupClose = (accion, valor, campo) => {
+    if (accion === "fila" && valor) {
+      if (campo === "1.10") {
+        const elModelo = elementosRef.current.find(
+          (el) => el?.dataset?.campo === "1.11",
+        );
+        if (elModelo) {
+          elModelo.value = "";
+          elModelo.dataset.value = "";
+          elModelo.dataset.valor = "";
+          if (elModelo.tagName === "SELECT" && elModelo.options.length > 0) {
+            elModelo.options[0].textContent = "";
+            elModelo.options[0].value = "";
+          }
+        }
+      }
     }
   };
 
@@ -328,7 +359,10 @@ const CrudVehiculoPolicial03 = () => {
               etiqueta={metadata[7] ?? ""}
               placeholder={metadata[7] ?? ""}
               popupTipo={metadata[6] ?? ""}
-              onPopupClick={handlePopup}
+              onPopupClick={() => handlePopup(metadata[0])}
+              onPopupClose={(accion, valor) =>
+                handlePopupClose(accion, valor, metadata[0])
+              }
               style={
                 hideElement
                   ? {

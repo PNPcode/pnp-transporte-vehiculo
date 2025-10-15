@@ -182,7 +182,7 @@ const CustomElement = forwardRef(
         <label className="block w-full" style={restProps.style}>
           <div className="flex items-center gap-1 mb-1" style={restProps.style}>
             <span className="block text-sm font-bold text-green-900 mb-1">
-              Ingrese {etiqueta}
+              Ingrese {etiqueta?.replace(/nn/g, "ñ")}
             </span>
             {restProps.required && <span className="text-red-500"> *</span>}
           </div>
@@ -255,6 +255,7 @@ const CustomElement = forwardRef(
         unaLinea,
         offsetColumnas,
         ancho,
+        isFilter,
         ...restProps
       } = props;
 
@@ -290,6 +291,14 @@ const CustomElement = forwardRef(
         e.target.dataset.value = newValues.join(",");
         if (onChange) onChange(e);
       };
+
+      const filteredOptionsProp =
+        typeof isFilter === "string" && isFilter.trim() !== ""
+          ? optionsProp.filter((opt) => {
+              const strOpt = typeof opt === "string" ? opt : (opt?.label ?? "");
+              return strOpt.toLowerCase().includes(isFilter.toLowerCase());
+            })
+          : optionsProp;
 
       const parsedOptions = optionsProp.map((opt) => {
         if (typeof opt === "string" && opt.includes("|")) {
@@ -390,13 +399,14 @@ const CustomElement = forwardRef(
         <div className="block w-full">
           <label
             className="block w-3/4 mb-1 px-3 rounded-md border border-gray-400 bg-indigo-50 hover:bg-indigo-100 text-sm font-bold text-green-900 cursor-pointer shadow-sm transition"
-            onClick={() => {
+            onClick={(e) => {
               if (props.popupTipo === "0") {
                 setUsarHardcoded(false);
                 setHardcodedOption(null);
                 setShowPopupEspecial(true);
               } else {
                 setShowPopup(true);
+                props.onPopupClick?.(e);
               }
             }}
           >

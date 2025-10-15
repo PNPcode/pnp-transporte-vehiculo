@@ -92,6 +92,7 @@ const PopupBusqueda = forwardRef(
       const dataEnviar = resultado.join("|");
       const formData = new FormData();
       formData.append("data", dataEnviar);
+      // console.log("dataEnviar : ", dataEnviar);
 
       setIsSubmitting(true);
       try {

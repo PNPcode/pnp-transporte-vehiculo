@@ -17,6 +17,7 @@ const CrudVehiculoPolicial03 = () => {
   const [mensajeToast, setMensajeToast] = useState("");
   const [tipoToast, setTipoToast] = useState("success");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [datoModelos, setDatoModelos] = useState("");
 
   const selectedItems = useSelectStore((state) => state.selectedItems);
   const API_RESULT_LISTAR = "/Home/TraerListaVehiculo";
@@ -274,9 +275,18 @@ const CrudVehiculoPolicial03 = () => {
     return <div>No hay datos disponibles</div>;
   }
 
-  const llenarCombos = (valor, value) => {
+  const llenarCombos = (valor, campo, value) => {
     const lista = mapaListas?.[valor] ?? [];
     return lista;
+  };
+
+  const handlePopup = () => {
+    const el = elementosRef.current.find((el) => el?.dataset?.campo === "1.10");
+    const valor = el?.dataset?.value;
+    setDatoModelos(valor);
+    if (valor == "") {
+      alert("debe seleccionar una marca");
+    }
   };
 
   return (
@@ -300,7 +310,7 @@ const CrudVehiculoPolicial03 = () => {
         <span className="text-green-800">{isEdit ? "EDITAR" : "NUEVO"}</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {informacion.map((datos, idx) => {
           const { data, metadata } = datos;
           const typeCode = Number(metadata?.[5] ?? 0);
@@ -318,6 +328,7 @@ const CrudVehiculoPolicial03 = () => {
               etiqueta={metadata[7] ?? ""}
               placeholder={metadata[7] ?? ""}
               popupTipo={metadata[6] ?? ""}
+              onPopupClick={handlePopup}
               style={
                 hideElement
                   ? {
@@ -357,6 +368,7 @@ const CrudVehiculoPolicial03 = () => {
                       unaLinea: metadata?.[9],
                       offsetColumnas: metadata?.[10],
                       ancho: metadata?.[11],
+                      isFilter: metadata[0] === "1.11" ? datoModelos : "",
                     }
                   : {
                       defaultValue: datos.data,
@@ -371,7 +383,8 @@ const CrudVehiculoPolicial03 = () => {
               {...(mapaListas[metadata[6]] || datasets[metadata[0]]?.listaAux
                 ? {
                     options: (() => {
-                      const base = llenarCombos(metadata[6], data) || [];
+                      const base =
+                        llenarCombos(metadata[6], metadata[0], data) || [];
                       const auxRaw = datasets[metadata[0]]?.listaAux;
                       const auxArr = Array.isArray(auxRaw)
                         ? auxRaw.filter((v) => v && v.trim() !== "")

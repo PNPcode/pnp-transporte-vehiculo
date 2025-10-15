@@ -292,15 +292,24 @@ const CustomElement = forwardRef(
         if (onChange) onChange(e);
       };
 
-      const filteredOptionsProp =
-        typeof isFilter === "string" && isFilter.trim() !== ""
-          ? optionsProp.filter((opt) => {
-              const strOpt = typeof opt === "string" ? opt : (opt?.label ?? "");
-              return strOpt.toLowerCase().includes(isFilter.toLowerCase());
-            })
-          : optionsProp;
+      const filteredOptionsProp = (() => {
+        if (typeof isFilter === "string" && isFilter.trim() !== "") {
+          const filtrados = optionsProp.filter((opt) => {
+            if (typeof opt !== "string") return false;
+            const parts = opt.split("|");
+            const filterValue = String(isFilter).trim();
+            return parts[1] && parts[1].trim() === filterValue;
+          });
+          if (filtrados.length > 0) {
+            const cabeceras = optionsProp.slice(0, 2);
+            return [...cabeceras, ...filtrados];
+          }
+          return filtrados;
+        }
+        return optionsProp;
+      })();
 
-      const parsedOptions = optionsProp.map((opt) => {
+      const parsedOptions = filteredOptionsProp.map((opt) => {
         if (typeof opt === "string" && opt.includes("|")) {
           const parts = opt.split("|");
           const value = parts[0];
@@ -390,7 +399,7 @@ const CustomElement = forwardRef(
       const configTable = {
         title: etiqueta,
         isPaginar: false,
-        listaDatos: optionsProp,
+        listaDatos: filteredOptionsProp,
         offsetColumnas: offsetColumnas ?? 1,
       };
       const popupWidth = ancho ? `${ancho}px` : "600px";
@@ -404,10 +413,14 @@ const CustomElement = forwardRef(
                 setUsarHardcoded(false);
                 setHardcodedOption(null);
                 setShowPopupEspecial(true);
-              } else {
-                setShowPopup(true);
-                props.onPopupClick?.(e);
+                return;
               }
+              const allow = props.onPopupClick ? props.onPopupClick(e) : true;
+              if (allow === false) {
+                setShowPopup(false);
+                return;
+              }
+              setShowPopup(true);
             }}
           >
             <span className="text-sm font-bold text-green-900">
@@ -452,6 +465,13 @@ const CustomElement = forwardRef(
               tabIndex={-1}
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
+                  if (props.onPopupClose && showPopup) {
+                    try {
+                      props.onPopupClose("cerrar", null);
+                    } catch (err) {
+                      console.warn(err);
+                    }
+                  }
                   setShowPopup(false);
                 }
               }}
@@ -470,6 +490,13 @@ const CustomElement = forwardRef(
                         const descr = fila?.[3] ?? "";
                         const label = fila[fila.length - 1];
                         setOverrideOption({ value, label, extra, descr });
+                        if (props.onPopupClose) {
+                          try {
+                            props.onPopupClose("fila", value);
+                          } catch (err) {
+                            console.warn(err);
+                          }
+                        }
                         if (ref && ref.current) {
                           try {
                             ref.current.dataset.value = value;
@@ -495,7 +522,16 @@ const CustomElement = forwardRef(
                 </div>
                 <div className="pt-3 border-t border-gray-200 flex justify-end">
                   <button
-                    onClick={() => setShowPopup(false)}
+                    onClick={() => {
+                      if (props.onPopupClose) {
+                        try {
+                          props.onPopupClose("cerrar", null);
+                        } catch (err) {
+                          console.warn(err);
+                        }
+                      }
+                      setShowPopup(false);
+                    }}
                     className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600"
                   >
                     Cerrar
